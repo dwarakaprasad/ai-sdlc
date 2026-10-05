@@ -1,0 +1,37 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f7f7f5;
+  color: #1f1f1f;
+}
+main {
+  max-width: 28rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+input {
+  font: inherit;
+  padding: 0.5rem;
+}
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.hint {
+  color: #666;
+  font-size: 0.875rem;
+}
+.error {
+  color: #b00020;
+}

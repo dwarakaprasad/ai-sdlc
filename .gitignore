@@ -1,1 +1,4 @@
-.scratch/
+.scratch
+node_modules
+dist
+data
