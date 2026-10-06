@@ -83,11 +83,15 @@ export const api = {
   goalCards: () => get<GoalCard[]>("/api/learner/goals"),
   teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
   saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),
-  /** Starts a Session on a Goal, or resumes the open one. */
-  openSession: async (goalId: number) => {
+  /**
+   * Starts a Session on a Goal, or resumes the open one; `lessonUnavailable` while the Curriculum is invalid or lacks
+   * the Lesson, `goalNotActive` once the Goal is met, flagged or skipped.
+   */
+  openSession: async (goalId: number): Promise<TutorSession | { error: "lessonUnavailable" | "goalNotActive" }> => {
     const res = await post(`/api/learner/goals/${goalId}/session`, {});
+    if (res.status === 409) return res.json();
     if (!res.ok) throw new Error(`open session: ${res.status}`);
-    return (await res.json()) as TutorSession;
+    return res.json();
   },
   /** Starts the next Lesson Quiz attempt; the Tutor writes its questions first, which can take a little while. */
   startQuiz: async (sessionId: number): Promise<TutorSession | { error: string }> => {

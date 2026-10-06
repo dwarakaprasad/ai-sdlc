@@ -6,6 +6,7 @@ const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 
 /** What the Learner sees instead of a Tutor reply once the Parent's daily token cap is reached. */
 const DAILY_LIMIT = "That's enough for today! You've worked really hard. Come back tomorrow to carry on.";
+const LESSON_UNAVAILABLE = "This Lesson can't be taught just now. Ask your Parent to check the Curriculum in the Parent area.";
 
 /** A YYYY-MM-DD date as e.g. "Tue, Oct 20". Read as a local day so it never shifts across time zones. */
 function formatDate(date: string): string {
@@ -66,6 +67,7 @@ export const text = {
     failed: "The Tutor couldn't reply just then.",
     retry: "Try again",
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
+    errors: { lessonUnavailable: LESSON_UNAVAILABLE } as Record<string, string>,
     dailyLimit: DAILY_LIMIT,
     breakPrompt: (minutes: number) => `You've been working for ${minutes} minutes. Time for a short break? Stretch, get a drink, then come back.`,
     keepGoing: "Keep going",
@@ -97,6 +99,7 @@ export const text = {
       invalidAnswer: "Choose one of the answers, or for a number question, type a number.",
       answerRequired: "Type your answer first.",
       dailyLimitReached: DAILY_LIMIT,
+      lessonUnavailable: LESSON_UNAVAILABLE,
     } as Record<string, string>,
   },
   teachingSettings: {
