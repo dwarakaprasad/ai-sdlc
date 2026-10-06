@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { isAccentColor, isAvatarId } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { endLogin, requireRole, startLogin, verifyPassword } from "./auth";
-import { learnerToday } from "./goals";
+import { learnerToday, learningPathOf } from "./goals";
 import { readJsonObject } from "./http";
 import { allLearners, findLearner, loggedInLearner, saveAvatar, toLearnerProfile, toLoggedInLearner } from "./learners";
 import { learnerSessionRoutes } from "./sessions";
@@ -31,6 +31,13 @@ export function learnerRoutes(deps: AppDeps) {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
       return c.json(learnerToday(deps, learner));
+    })
+    .get("/subjects/:subjectKey/path", (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const path = learningPathOf(deps, learner, c.req.param("subjectKey"));
+      if (!path) return c.json({ error: "noPath" }, 404);
+      return c.json(path);
     })
     .route("/", learnerSessionRoutes(deps));
 

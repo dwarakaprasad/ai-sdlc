@@ -92,6 +92,7 @@
   --m-draw-tick: 400ms;
   --m-bounce: 450ms;
   --m-draw: 800ms;
+  --m-pulse: 1.6s;
   --ease-bounce: cubic-bezier(0.3, 1.6, 0.6, 1);
 
   /* Touch: the smallest control anywhere. */

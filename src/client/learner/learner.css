@@ -177,9 +177,27 @@
 .subject-row + .subject-row {
   border-top: 1px solid var(--line);
 }
+/* The Subject's name opens its Learning Path. */
 .subject-row-name {
+  justify-self: start;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
   font-weight: 800;
   color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: var(--s-1);
+}
+.subject-row-name:hover {
+  text-decoration-color: var(--ink);
+}
+.subject-row-name:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
 }
 .subject-row-goal {
   display: flex;
@@ -212,6 +230,194 @@
   align-items: center;
 }
 
+/* Learning Path: a side panel beside the Term's Units as timeline lists */
+.path {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--s-8);
+}
+.path-side {
+  position: sticky;
+  /* Below the top bar. */
+  top: calc(var(--s-9) + var(--s-8));
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+}
+.path-ring {
+  width: 120px;
+  height: 120px;
+  margin: var(--s-4) 0;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background:
+    radial-gradient(closest-side, var(--paper) 82%, transparent 83%),
+    conic-gradient(var(--ink) calc(var(--done) * 360deg), var(--line) 0);
+}
+.path-ring strong {
+  font-size: var(--t-h1);
+  line-height: 1;
+  color: var(--ink);
+}
+.path-ring small {
+  color: var(--muted);
+  font-weight: 700;
+}
+.path-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--t-small);
+}
+.path-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: var(--s-2);
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.path-legend .met {
+  background: var(--ink);
+}
+.path-legend .current {
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+}
+.path-legend .skipped {
+  background: var(--line);
+}
+.path-legend .with-parent {
+  background: var(--lilac-soft);
+  border: 2px solid var(--lilac);
+}
+.path-legend .ahead {
+  border: 2px solid var(--line-strong);
+}
+.path-unit {
+  margin-bottom: var(--s-7);
+}
+.path-unit header {
+  margin-bottom: var(--s-2);
+}
+.path-unit ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.path-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: 68px;
+  padding: var(--s-3) var(--s-4);
+}
+.path-step + .path-step {
+  border-top: 1px solid var(--line);
+}
+/* The timeline's line, through every mark. */
+.path-step::before {
+  content: "";
+  position: absolute;
+  /* Through the middle of the marks: the step's padding plus half a mark. */
+  left: calc(var(--s-4) + 13px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+.path-step:first-child::before {
+  top: 50%;
+}
+.path-step:last-child::before {
+  bottom: 50%;
+}
+.path-dot {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.path-step.unit-test .path-dot {
+  border-radius: var(--r-tag);
+}
+.path-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.path-text small {
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.path-text strong {
+  color: var(--ink);
+  font-size: var(--t-wordmark-small);
+}
+.path-state {
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--muted);
+}
+.path-step.met .path-dot {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.path-step:is(.skipped, .ahead) .path-text strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+.path-step.skipped .path-dot {
+  background: var(--line);
+  border-color: var(--line);
+}
+.path-step.with-parent .path-dot {
+  background: var(--lilac-soft);
+  border-color: var(--lilac);
+  color: var(--lilac);
+}
+.path-step.with-parent .path-state {
+  color: var(--lilac);
+}
+.path-step.current {
+  background: var(--yellow-soft);
+}
+/* The current node pulses gently; like all motion, not under reduced motion. */
+.path-step.current .path-dot {
+  background: var(--yellow);
+  border-color: var(--ink);
+  animation: pulse-ring var(--m-pulse) ease-out infinite;
+}
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--yellow);
+  }
+  100% {
+    box-shadow: 0 0 0 var(--s-4) transparent;
+  }
+}
+
 /* A calm note in place of a screen */
 .notice-page {
   min-height: 100vh;
@@ -236,6 +442,17 @@
 @media (max-width: 1000px) {
   .home-grid {
     grid-template-columns: 1fr;
+  }
+  .path {
+    grid-template-columns: 1fr;
+    gap: var(--s-4);
+  }
+  .path-side {
+    position: static;
+  }
+  .path-ring,
+  .path-legend {
+    display: none;
   }
 }
 @media (max-width: 760px) {

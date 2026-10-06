@@ -7,6 +7,7 @@ import {
   type AvatarId,
   type GoalKind,
   type GoalStatus,
+  type PathState,
 } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
@@ -118,8 +119,20 @@ export const text = {
     goalsMet: "Goals met",
     start: "Start",
   },
+  learningPath: {
+    unit: (n: number) => `Unit ${n}`,
+    lesson: (unit: number, n: number) => `Lesson ${unit}.${n}`,
+    unitTest: "Unit Test",
+    /** What each state says beside a node, and in the legend; the current node has its Start button instead. */
+    states: { met: "Done", current: "Up next", skipped: "Skipped", "with-parent": "With your Parent", ahead: "Later" } satisfies Record<PathState, string>,
+    legendLabel: "What the marks mean",
+    ring: (met: number, total: number) => `${met} of ${total} done this Term`,
+    ringOf: (total: number) => `of ${total}`,
+    noPath: "Your Learning Path shows up here once your Parent sets a Goal in this Subject.",
+  },
   learnerNav: {
     today: "Today",
+    learningPath: "Learning Path",
     switchProfile: "Switch profile",
   },
   session: {
