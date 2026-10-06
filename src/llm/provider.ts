@@ -12,7 +12,11 @@ export type TokenUsage = { inputTokens: number; outputTokens: number };
 
 export type ChatRequest = { model: string; system: string; messages: ChatMessage[] };
 
-/** A JSON Schema object describing the JSON a structured call must return. */
+/**
+ * A JSON Schema object describing the JSON a structured call must return.
+ * Keep to what every provider's strict mode accepts: each object lists all its properties in `required`
+ * and sets `additionalProperties: false`.
+ */
 export type JsonSchema = Record<string, unknown>;
 
 export type StructuredRequest = ChatRequest & { schema: JsonSchema };

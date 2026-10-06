@@ -1,6 +1,7 @@
 import { createApp } from "../../src/server/app";
 import type { AppDeps } from "../../src/server/deps";
 import { openDatabase } from "../../src/server/db";
+import { PROVIDERS } from "../../src/shared/llm";
 import { writeFixture } from "./curriculumFixture";
 import { createFakeLlm, type FakeLlm } from "./fakeLlm";
 
@@ -17,7 +18,7 @@ export function createTestApp(
   const app = createApp({
     db: openDatabase(":memory:"),
     curriculaDir: options.curriculaDir ?? writeFixture({}),
-    providers: { anthropic: llm.provider, ...options.providers },
+    providers: { ...fakeForEveryProvider(llm), ...options.providers },
     now: options.now ?? (() => new Date()),
   });
 
@@ -40,4 +41,8 @@ export function createTestApp(
   }
 
   return { client, llm };
+}
+
+function fakeForEveryProvider(llm: FakeLlm) {
+  return Object.fromEntries(PROVIDERS.map((p) => [p.id, llm.provider])) as AppDeps["providers"];
 }

@@ -5,6 +5,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { curriculaDir } from "../curriculum";
 import { anthropicProvider } from "../llm/anthropic";
+import { openaiProvider } from "../llm/openai";
 import { createApp } from "./app";
 import { openDatabase } from "./db";
 
@@ -17,7 +18,7 @@ mkdirSync(dataDir, { recursive: true });
 const app = createApp({
   db: openDatabase(join(dataDir, "home-tutor.db")),
   curriculaDir: curriculaDir(),
-  providers: { anthropic: anthropicProvider() },
+  providers: { anthropic: anthropicProvider(), openai: openaiProvider() },
   now: () => new Date(),
 });
 

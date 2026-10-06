@@ -8,6 +8,12 @@ export const PROVIDERS = [
     /** Offered as suggestions; the Parent may type any model id the provider accepts. */
     models: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-4-5"],
   },
+  {
+    id: "openai",
+    name: "OpenAI",
+    envVar: "OPENAI_API_KEY",
+    models: ["gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"],
+  },
 ] as const;
 
 export type ProviderId = (typeof PROVIDERS)[number]["id"];

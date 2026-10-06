@@ -172,6 +172,13 @@ function LlmSettingsForm() {
     setMessage({ text: text.llmSettings.errors[body.error ?? ""] ?? text.genericError, error: true });
   }
 
+  /** Another provider won't know this one's model, so start from its first suggestion. */
+  function changeProvider(id: string) {
+    setProvider(id);
+    if (isProviderId(id)) setModel(id === saved?.provider ? saved.model : providerInfo(id).models[0]);
+    setMessage(undefined);
+  }
+
   async function test() {
     setTesting(true);
     setMessage(undefined);
@@ -195,7 +202,7 @@ function LlmSettingsForm() {
       <form className="card" onSubmit={save}>
         <label>
           {text.llmSettings.providerLabel}
-          <select value={provider} onChange={(e) => (setProvider(e.target.value), setMessage(undefined))}>
+          <select value={provider} onChange={(e) => changeProvider(e.target.value)}>
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}

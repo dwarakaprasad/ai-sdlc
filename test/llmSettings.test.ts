@@ -28,6 +28,15 @@ describe("LLM settings in the Parent area", () => {
     expect(await (await parent("/api/parent/settings/llm")).json()).toEqual({ provider: "anthropic", model: "claude-haiku-4-5" });
   });
 
+  it("lets the Parent choose OpenAI", async () => {
+    const { parent } = await setUp();
+
+    const res = await parent("/api/parent/settings/llm", { provider: "openai", model: "gpt-5.4-mini" }, "PUT");
+
+    expect(res.status).toBe(200);
+    expect(await (await parent("/api/parent/settings/llm")).json()).toEqual({ provider: "openai", model: "gpt-5.4-mini" });
+  });
+
   it.each([
     [{ provider: "acme", model: "x" }, "unknownProvider"],
     [{ provider: "anthropic", model: "  " }, "modelRequired"],
