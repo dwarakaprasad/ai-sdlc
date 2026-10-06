@@ -4,7 +4,7 @@ import { loadCurricula } from "../curriculum";
 import { PIN_PATTERN } from "../shared/auth";
 import type { Learner, LearnerInput } from "../shared/api";
 import type { AppDeps } from "./deps";
-import { hashPassword } from "./auth";
+import { currentLogin, hashPassword } from "./auth";
 import { readJsonObject } from "./http";
 import type { Db } from "./db";
 import { learners } from "./db/schema";
@@ -18,6 +18,12 @@ export function allLearners(db: Db): LearnerRow[] {
 
 export function findLearner(db: Db, id: number): LearnerRow | undefined {
   return db.select().from(learners).where(eq(learners.id, id)).get();
+}
+
+/** The Learner this browser is logged in as, if any. */
+export function loggedInLearner(db: Db, c: Context): LearnerRow | undefined {
+  const learnerId = currentLogin(c, db)?.learnerId;
+  return learnerId == null ? undefined : findLearner(db, learnerId);
 }
 
 /** The Learner named by the `:id` path parameter, if it is a number and such a Learner exists. */

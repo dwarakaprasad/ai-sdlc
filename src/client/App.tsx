@@ -12,9 +12,13 @@ import type {
   LoggedInLearner,
   LearnerProfile,
   ParentStatus,
+  SessionMessage,
+  TutorSession,
 } from "../shared/api";
+import { MAX_RE_EXPLANATIONS_LIMIT } from "../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
+import { MathText } from "./MathText";
 import { text } from "./text";
 
 type AppState = { learner: LoggedInLearner } | { learner: undefined; parent: ParentStatus };
@@ -115,6 +119,7 @@ function ParentArea({ onLogout }: { onLogout: () => void }) {
       <Learners />
       <Curricula />
       <LlmSettingsForm />
+      <TeachingSettingsForm />
       <Usage />
       <button type="button" onClick={() => api.logoutParent().then(onLogout)}>
         {text.parentArea.logout}
@@ -245,6 +250,48 @@ function LlmSettingsForm() {
   );
 }
 
+function TeachingSettingsForm() {
+  const [maxReExplanations, setMaxReExplanations] = useState<string>();
+  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  useEffect(
+    () =>
+      void api.teachingSettings().then(
+        (s) => setMaxReExplanations(String(s.maxReExplanations)),
+        () => setMessage({ text: text.genericError, error: true }),
+      ),
+    [],
+  );
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    const res = await api.saveTeachingSettings({ maxReExplanations: Number(maxReExplanations) });
+    setMessage(res.ok ? { text: text.teachingSettings.saved } : { text: res.status === 400 ? text.teachingSettings.invalid : text.genericError, error: true });
+  }
+
+  if (maxReExplanations === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  return (
+    <section>
+      <h2>{text.teachingSettings.heading}</h2>
+      <form className="card" onSubmit={save}>
+        <label>
+          {text.teachingSettings.maxReExplanationsLabel}
+          <input
+            type="number"
+            min={0}
+            max={MAX_RE_EXPLANATIONS_LIMIT}
+            step={1}
+            value={maxReExplanations}
+            onChange={(e) => (setMaxReExplanations(e.target.value), setMessage(undefined))}
+          />
+        </label>
+        <span className="hint">{text.teachingSettings.hint}</span>
+        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
+        <button type="submit">{text.teachingSettings.save}</button>
+      </form>
+    </section>
+  );
+}
+
 function Usage() {
   const [days, setDays] = useState<DailyUsage[]>();
   const [error, setError] = useState<string>();
@@ -330,8 +377,12 @@ function LearnerLogin({ onDone, onParent }: { onDone: () => void; onParent: () =
 function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout: () => void }) {
   const [cards, setCards] = useState<GoalCard[]>();
   const [error, setError] = useState<string>();
-  useEffect(() => void api.goalCards().then(setCards, () => setError(text.genericError)), []);
+  const [openGoal, setOpenGoal] = useState<number>();
+  const loadCards = () => void api.goalCards().then(setCards, () => setError(text.genericError));
+  useEffect(loadCards, []);
 
+  // A Session may have changed the Goals (a Flagged Goal leaves the list), so reload them on the way back.
+  if (openGoal !== undefined) return <SessionChat goalId={openGoal} onBack={() => (setOpenGoal(undefined), loadCards())} />;
   return (
     <section>
       <h1>{text.learnerHome.heading(learner.name)}</h1>
@@ -345,11 +396,127 @@ function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout
           <h2>{card.title}</h2>
           {/* Gentle wording for the Learner; the Parent sees "Overdue" plainly. */}
           <p className="hint">{card.overdue ? text.learnerHome.catchUp : text.learnerHome.target(card.targetDate)}</p>
+          <button type="button" onClick={() => setOpenGoal(card.id)}>
+            {text.learnerHome.start}
+          </button>
         </article>
       ))}
       <button type="button" onClick={() => api.logoutLearner().then(onLogout)}>
         {text.learnerHome.logout}
       </button>
+    </section>
+  );
+}
+
+/** A Tutor Session on one Goal: the transcript, the Tutor's reply as it streams in, and the Learner's answer box. */
+function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void }) {
+  const [session, setSession] = useState<TutorSession>();
+  const [streaming, setStreaming] = useState<string>();
+  const [draft, setDraft] = useState("");
+  const [failed, setFailed] = useState(false);
+  const [error, setError] = useState<string>();
+
+  /** Opens (or resumes) the Session; a new one, or one whose Explanation never arrived, starts with the Explanation. */
+  async function open(isCancelled = () => false) {
+    try {
+      const opened = await api.openSession(goalId);
+      if (isCancelled()) return;
+      setSession(opened);
+      if (opened.step === "explanation") await takeTurn(opened);
+    } catch {
+      setError(text.genericError);
+    }
+  }
+
+  /** One turn; the Learner's message shows straight away, and goes back to the answer box if the turn fails. */
+  async function takeTurn(current: TutorSession, message?: string) {
+    const pending: SessionMessage[] = message === undefined ? current.messages : [...current.messages, { role: "learner", content: message }];
+    setSession({ ...current, messages: pending });
+    setFailed(false);
+    setStreaming("");
+    let reply = "";
+    const result = await api
+      .turn(current.id, message, (piece) => {
+        reply += piece;
+        setStreaming(reply);
+      })
+      .catch(() => ({ error: "llmFailed" as const }));
+    setStreaming(undefined);
+    if ("step" in result) return setSession({ ...current, step: result.step, messages: [...pending, { role: "tutor", content: reply }] });
+    setSession(current);
+    if (message !== undefined) setDraft(message);
+    // Another tab moved the Session on first: show where it is now.
+    if (result.error === "sessionChanged") return open();
+    setFailed(true);
+  }
+
+  useEffect(() => {
+    // Development mode runs effects twice; only the second may start the Explanation.
+    let cancelled = false;
+    void open(() => cancelled);
+    return () => void (cancelled = true);
+  }, [goalId]);
+
+  async function send(e: FormEvent) {
+    e.preventDefault();
+    if (!session || draft.trim() === "") return;
+    const message = draft.trim();
+    setDraft("");
+    await takeTurn(session, message);
+  }
+
+  const busy = streaming !== undefined;
+  return (
+    <section className="session">
+      <button type="button" className="link" onClick={onBack}>
+        {text.session.back}
+      </button>
+      {error && <p className="error">{error}</p>}
+      {!session && !error && <p>{text.loading}</p>}
+      {session && (
+        <>
+          <p className="subject">{session.subjectName}</p>
+          <h1>{session.title}</h1>
+          <ol className="transcript">
+            {session.messages.map((m, i) => (
+              <li key={i} className={m.role}>
+                <span className="speaker">{m.role === "tutor" ? text.session.tutor : text.session.you}</span>
+                {m.role === "tutor" ? <MathText text={m.content} /> : m.content}
+              </li>
+            ))}
+            {busy && (
+              <li className="tutor" aria-live="polite">
+                <span className="speaker">{text.session.tutor}</span>
+                {streaming ? <MathText text={streaming} /> : <span className="hint">{text.session.thinking}</span>}
+              </li>
+            )}
+          </ol>
+          {failed && (
+            <p className="error">
+              {text.session.failed}{" "}
+              {/* A failed answer is back in the answer box to send again; a failed Explanation needs this button. */}
+              {session.step === "explanation" && (
+                <button type="button" onClick={() => void takeTurn(session)}>
+                  {text.session.retry}
+                </button>
+              )}
+            </p>
+          )}
+          {session.step === "understanding-check" && (
+            <form className="answer" onSubmit={send}>
+              <label>
+                {text.session.messageLabel}
+                <textarea rows={3} value={draft} disabled={busy} onChange={(e) => setDraft(e.target.value)} />
+              </label>
+              <button type="submit" disabled={busy || draft.trim() === ""}>
+                {text.session.send}
+              </button>
+            </form>
+          )}
+          {!busy && session.step === "ready-for-quiz" && <p className="hint">{text.session.readyForQuiz}</p>}
+          {session.step === "ended" && <p className="hint">{text.session.ended}</p>}
+        </>
+      )}
     </section>
   );
 }
