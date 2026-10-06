@@ -43,9 +43,7 @@ export function GoalMet({
           <div>
             <span className="eyebrow">{text.goalMet.upNext}</span>
             <strong>{text.goalTitle(next.kind, next.title)}</strong>
-            <span className="up-next-when">
-              {next.subjectName} · {text.learnerHome.target(next.targetDate)}
-            </span>
+            <span className="up-next-when">{text.goalMet.when(next.subjectName, next.targetDate)}</span>
           </div>
           <Button className="up-next-start" onClick={() => onOpenGoal(next.id)}>
             {text.goalMet.start} <ArrowIcon size={18} />
@@ -53,7 +51,7 @@ export function GoalMet({
         </article>
       )}
       <Button kind="quiet" onClick={onHome}>
-        {text.goalMet.home}
+        {text.session.back}
       </Button>
     </main>
   );

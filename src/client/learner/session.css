@@ -2,6 +2,10 @@
 
 /* Chat: a lesson panel beside the conversation */
 .chat-app {
+  /* The conversation keeps to a readable column on a wide screen. */
+  --convo-gutter: max(var(--s-7), calc(50% - 340px));
+}
+.chat-app {
   display: grid;
   grid-template-columns: 320px 1fr;
   height: 100vh;
@@ -75,7 +79,7 @@
 }
 .convo-scroll {
   overflow-y: auto;
-  padding: var(--s-7) max(var(--s-7), calc(50% - 340px)) var(--s-6);
+  padding: var(--s-7) var(--convo-gutter) var(--s-6);
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
@@ -126,7 +130,7 @@
   max-width: 70%;
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: var(--s-4);
+  border-radius: var(--r-field);
   padding: var(--s-2) var(--s-4);
   color: var(--ink);
   white-space: pre-wrap;
@@ -139,7 +143,7 @@
   flex-wrap: wrap;
   border: 1px solid var(--line);
   border-left: 4px solid var(--yellow);
-  border-radius: var(--s-3);
+  border-radius: var(--r-field);
   padding: var(--s-3) var(--s-4);
   background: var(--paper);
 }
@@ -168,7 +172,7 @@
   display: flex;
   gap: var(--s-3);
   align-items: flex-end;
-  padding: var(--s-4) max(var(--s-7), calc(50% - 340px)) var(--s-6);
+  padding: var(--s-4) var(--convo-gutter) var(--s-6);
   border-top: 1px solid var(--line);
 }
 .composer textarea {
@@ -177,7 +181,7 @@
   max-height: 10em;
   padding: var(--s-3) var(--s-4);
   border: 1.5px solid var(--line);
-  border-radius: var(--s-3);
+  border-radius: var(--r-field);
   background: var(--paper);
   font-size: var(--t-lead);
   line-height: 1.4;
@@ -199,7 +203,7 @@
   align-items: center;
   gap: var(--s-4);
   flex-wrap: wrap;
-  padding: var(--s-4) max(var(--s-7), calc(50% - 340px)) var(--s-6);
+  padding: var(--s-4) var(--convo-gutter) var(--s-6);
   border-top: 1px solid var(--line);
 }
 .quiz-start-text {
@@ -256,14 +260,14 @@
   max-width: 720px;
   width: calc(100% - var(--s-7));
   margin: var(--s-3) auto var(--s-9);
-  padding: var(--s-7) 40px;
+  padding: var(--s-7) var(--s-8);
   display: flex;
   flex-direction: column;
   gap: var(--s-5);
   box-shadow: var(--lift);
 }
 .quiz-prompt {
-  font-size: 26px;
+  font-size: var(--t-prompt);
   font-weight: 700;
   line-height: 1.4;
 }
@@ -275,15 +279,16 @@
   gap: var(--s-3);
 }
 .quiz-option {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s-4);
   min-height: 64px;
   padding: var(--s-3) var(--s-4);
   border: 1.5px solid var(--line);
-  border-radius: var(--s-3);
+  border-radius: var(--r-field);
   background: var(--card);
-  font-size: 19px;
+  font-size: var(--t-option);
   color: var(--ink);
   cursor: pointer;
   transition: border-color var(--m-base), opacity var(--m-base);
@@ -299,9 +304,7 @@
   margin: 0;
   opacity: 0;
 }
-.quiz-option {
-  position: relative;
-}
+
 .quiz-option:has(input:focus-visible) {
   outline: 3px solid var(--yellow);
   outline-offset: 2px;
@@ -348,7 +351,7 @@
 .quiz-number input {
   width: 200px;
   min-height: 64px;
-  font-size: 40px;
+  font-size: var(--t-big);
   font-weight: 800;
   border: 0;
   border-bottom: 3px solid var(--ink);
@@ -365,7 +368,7 @@
 }
 .quiz-written textarea {
   border: 1.5px solid var(--line);
-  border-radius: var(--s-3);
+  border-radius: var(--r-field);
   padding: var(--s-3) var(--s-4);
   font-size: var(--t-lead);
   resize: vertical;
@@ -380,8 +383,8 @@
   display: flex;
   gap: var(--s-3);
   padding: var(--s-3) var(--s-4);
-  border-radius: var(--s-3);
-  font-size: 17px;
+  border-radius: var(--r-field);
+  font-size: var(--t-feedback);
   animation: fade-in var(--m-enter) both;
 }
 .quiz-feedback.right {
@@ -403,7 +406,7 @@
 }
 .quiz-feedback.right .quiz-feedback-mark {
   background: var(--green);
-  animation: bounce-in 450ms cubic-bezier(0.3, 1.6, 0.6, 1) both;
+  animation: bounce-in var(--m-bounce) var(--ease-bounce) both;
 }
 .quiz-feedback.wrong .quiz-feedback-mark {
   background: var(--warm);
@@ -425,11 +428,11 @@
   padding: var(--s-4) var(--s-7) var(--s-9);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 40px;
+  gap: var(--s-8);
   align-items: start;
 }
 .quiz-score-number {
-  font-size: 96px;
+  font-size: var(--t-score);
   font-weight: 800;
   color: var(--ink);
   letter-spacing: -0.04em;
@@ -452,7 +455,7 @@
   padding: var(--s-3) var(--s-4);
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--s-3);
+  border-radius: var(--r-field);
   font-size: var(--t-h3);
 }
 .quiz-score-mark {
@@ -506,7 +509,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--s-3);
-  padding: 40px var(--s-4) var(--s-9);
+  padding: var(--s-8) var(--s-4) var(--s-9);
   text-align: center;
 }
 .goal-met-check circle,
@@ -525,14 +528,14 @@
   stroke-dashoffset: 340;
   transform: rotate(-90deg);
   transform-origin: center;
-  animation: draw 800ms ease-out 100ms forwards;
+  animation: draw var(--m-draw) ease-out var(--m-fast) forwards;
 }
 .goal-met-tick {
   stroke: var(--ink);
   stroke-width: 9;
   stroke-dasharray: 80;
   stroke-dashoffset: 80;
-  animation: draw 400ms ease-out 800ms forwards;
+  animation: draw var(--m-draw-tick) ease-out var(--m-draw) forwards;
 }
 @keyframes draw {
   to {
@@ -548,7 +551,7 @@
 }
 .goal-met-title {
   max-width: 16em;
-  font-size: 40px;
+  font-size: var(--t-big);
 }
 .goal-met-score {
   max-width: 32em;
@@ -571,7 +574,7 @@
   flex-direction: column;
 }
 .up-next strong {
-  font-size: 19px;
+  font-size: var(--t-option);
 }
 .up-next .eyebrow {
   color: var(--yellow);
@@ -635,9 +638,24 @@
     padding: var(--s-4) var(--s-4) var(--s-9);
   }
   .goal-met-title {
-    font-size: 30px;
+    font-size: var(--t-h1);
   }
   .up-next {
     flex-wrap: wrap;
   }
+}
+
+/* The break prompt over a Quiz screen, which has no conversation to hold it. */
+.break-float {
+  position: fixed;
+  left: var(--s-4);
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 4;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.break-float .break-banner {
+  background: var(--card);
+  box-shadow: var(--lift);
 }

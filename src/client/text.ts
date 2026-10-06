@@ -105,6 +105,10 @@ export const text = {
     startAgain: "Start the new Quiz",
     writing: `${TUTOR_NAME} is writing your quiz…`,
     question: (n: number, total: number) => `Question ${n} of ${total}`,
+    topTitle: (kind: GoalKind, title: string, attempt: number, maxAttempts: number) =>
+      `${kind === "unit-test" ? "Unit Test" : "Lesson Quiz"} · ${title} · Quiz ${attempt} of ${maxAttempts}`,
+    numberPlaceholder: "0",
+    outOf: (total: number) => `/${total}`,
     progress: (right: number, wrong: number, total: number) => `${right} right and ${wrong} not quite, of ${total} questions`,
     numberLabel: "Your answer",
     numberHint: "A number, like 12, 0.5 or 3/4.",
@@ -138,8 +142,8 @@ export const text = {
     scoreLine: { lesson: "on the Lesson Quiz.", "unit-test": "on the Unit Test." } satisfies Record<GoalKind, string>,
     score: (correct: number, total: number, on: string) => `${correct} of ${total} ${on} ${TUTOR_NAME} is proud of you!`,
     upNext: "Up next",
+    when: (subjectName: string, targetDate: string) => `${subjectName} · Aim to finish by ${formatDate(targetDate)}`,
     start: "Start",
-    home: "Back to Today",
   },
   teachingSettings: {
     heading: "Teaching",

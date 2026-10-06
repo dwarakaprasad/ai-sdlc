@@ -8,7 +8,7 @@ import { TutorMark } from "../components/TutorMark";
 import { Button, Card } from "../components/ui";
 import { text } from "../text";
 import { GoalMet } from "./GoalMet";
-import { QuizScore, QuizScreen, QuizStart } from "./Quiz";
+import { QuizScreen, QuizStart, ScoreScreen } from "./Quiz";
 
 /**
  * A Tutor Session on one Goal. The conversation (the transcript, the Tutor's reply as it streams in, and the Learner's
@@ -27,8 +27,11 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
   const [unavailable, setUnavailable] = useState(false);
   /** The Quiz question just answered, whose feedback shows until the Learner moves on (even past the attempt's last). */
   const [reviewing, setReviewing] = useState<number>();
-  /** The Learner left a failed attempt's score to go over the missed parts with the Tutor. */
-  const [leftScore, setLeftScore] = useState(false);
+  /**
+   * A failed attempt's score is showing: straight after its last answer, or on coming back before its re-teaching. It stays
+   * until the Learner goes over the missed parts with the Tutor.
+   */
+  const [showScore, setShowScore] = useState(false);
   /** How many break prompts the Learner has waved away this sitting; each restarts the timer. */
   const [breaksSkipped, setBreaksSkipped] = useState(0);
   const [breakDue, setBreakDue] = useState(false);
@@ -50,6 +53,7 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
       setError(undefined);
       setUnavailable(false);
       setReviewing(undefined);
+      setShowScore(opened.step === "re-teaching");
       setSession(opened);
       if (opened.step === "explanation") await takeTurn(opened);
     } catch {
@@ -96,37 +100,57 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
     await takeTurn(session, message);
   }
 
-  if (unavailable) return <LessonUnavailable onBack={onBack} />;
+  if (unavailable) return <LessonNotice message={text.session.lessonUnavailable} onBack={onBack} />;
   if (error) return <LessonNotice message={error} onBack={onBack} />;
   if (!session) return <p className="muted notice-page">{text.loading}</p>;
 
   const quiz = session.quiz;
   const busy = streaming !== undefined;
+  const breakBanner = breakDue && (
+    <BreakBanner
+      minutes={session.breakMinutes * (breaksSkipped + 1)}
+      onKeepGoing={() => (setBreakDue(false), setBreaksSkipped((n) => n + 1))}
+      onBreak={onBack}
+    />
+  );
+  // The Quiz screens have no conversation to hold the break prompt, so it floats over them.
+  const withBreak = (screen: React.ReactNode) => (
+    <>
+      {screen}
+      {breakBanner && <div className="break-float">{breakBanner}</div>}
+    </>
+  );
+
   if (quiz && (session.step === "quiz" || reviewing !== undefined)) {
-    return (
+    return withBreak(
       <QuizScreen
         session={session}
         quiz={quiz}
         reviewing={reviewing}
-        onAnswered={(answered, questionId) => (setSession(answered), setReviewing(questionId))}
+        onAnswered={(answered, questionId) => {
+          setSession(answered);
+          setReviewing(questionId);
+          // The attempt's last answer: a failed attempt shows its score next.
+          setShowScore(answered.quiz?.score !== undefined && !answered.quiz.score.passed);
+        }}
         onNext={() => setReviewing(undefined)}
         onChanged={() => void open()}
         onLeave={onBack}
-      />
+      />,
     );
   }
   if (quiz?.score && session.step === "goal-met") return <GoalMet session={session} score={quiz.score} onHome={onBack} onOpenGoal={onOpenGoal} />;
-  if (quiz?.score && (session.step === "ended" || (session.step === "re-teaching" && !leftScore))) {
-    return (
-      <QuizScore
+  if (quiz?.score && showScore) {
+    return withBreak(
+      <ScoreScreen
         session={session}
         quiz={quiz}
         onLeave={onBack}
         onGoOver={() => {
-          setLeftScore(true);
+          setShowScore(false);
           void takeTurn(session);
         }}
-      />
+      />,
     );
   }
 
@@ -135,13 +159,7 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
       <LessonPanel session={session} onLeave={onBack} />
       <section className="convo">
         <Conversation messages={session.messages} streaming={streaming}>
-          {session && breakDue && (
-            <BreakBanner
-              minutes={session.breakMinutes * (breaksSkipped + 1)}
-              onKeepGoing={() => (setBreakDue(false), setBreaksSkipped((n) => n + 1))}
-              onBreak={onBack}
-            />
-          )}
+          {breakBanner}
           {limited && <TutorNote mood="resting">{text.session.dailyLimit}</TutorNote>}
           {failed && (
             <div className="convo-failed">
@@ -156,7 +174,7 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
           )}
           {session.step === "ended" && <TutorNote mood="resting">{text.session.ended}</TutorNote>}
         </Conversation>
-        {session.step === "understanding-check" && !limited && (
+        {session.step === "understanding-check" && (
           <form className="composer" onSubmit={send}>
             <textarea
               aria-label={text.session.messageLabel}
@@ -175,15 +193,18 @@ export function SessionChat({ goalId, onBack, onOpenGoal }: { goalId: number; on
             </Button>
           </form>
         )}
-        {!busy && session.step === "ready-for-quiz" && !failed && !limited && (
-          <QuizStart session={session} onStarted={(started) => (setLeftScore(false), setSession(started))} onChanged={() => void open()} />
+        {!busy && session.step === "ready-for-quiz" && !failed && (
+          <QuizStart session={session} onStarted={setSession} onChanged={() => void open()} />
         )}
       </section>
     </div>
   );
 }
 
-/** Where each step stands while the Session is at `step`: done, now, or still to come. */
+/**
+ * Where each step of `text.session.steps` stands while the Session is at `step`: done, now, or still to come. A Lesson's steps
+ * are the Explanation, the Understanding Check and the Lesson Quiz (with its re-teaching); a Unit Test has just the one.
+ */
 function stepStates(kind: TutorSession["kind"], step: SessionStep): ("done" | "now" | "later")[] {
   if (kind === "unit-test") return [step === "goal-met" ? "done" : "now"];
   const now = step === "explanation" ? 0 : step === "understanding-check" ? 1 : step === "goal-met" ? 3 : 2;
@@ -300,11 +321,7 @@ function BreakBanner({ minutes, onKeepGoing, onBreak }: { minutes: number; onKee
   );
 }
 
-/** Shown in place of the Session while its Lesson can't be taught: a calm note, not an error page. */
-function LessonUnavailable({ onBack }: { onBack: () => void }) {
-  return <LessonNotice message={text.session.lessonUnavailable} onBack={onBack} />;
-}
-
+/** Shown in place of the Session when it can't go on, say while its Lesson can't be taught: a calm note, not an error page. */
 function LessonNotice({ message, onBack }: { message: string; onBack: () => void }) {
   return (
     <main className="notice-page screen-enter">

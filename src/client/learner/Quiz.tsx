@@ -50,6 +50,11 @@ export function QuizStart({ session, onStarted, onChanged }: { session: TutorSes
   );
 }
 
+/** How an answered question went, which the screens show in green or the warm "not quite" colour; undefined until it's answered. */
+function resultOf(question: QuizQuestion): "right" | "wrong" | undefined {
+  return question.answered && (question.answered.correct ? "right" : "wrong");
+}
+
 /** The bar over a Quiz: a way out, what is being taken, and (while answering) one segment per question coloured by result. */
 function QuizTop({ session, quiz, onLeave, segments = true }: { session: TutorSession; quiz: QuizAttempt; onLeave: () => void; segments?: boolean }) {
   const right = quiz.questions.filter((q) => q.answered?.correct).length;
@@ -60,14 +65,11 @@ function QuizTop({ session, quiz, onLeave, segments = true }: { session: TutorSe
       <Button kind="quiet" onClick={onLeave}>
         <CloseIcon size={18} /> {text.session.leave}
       </Button>
-      <span className="muted quiz-top-title">
-        {text.quiz.heading[session.kind]} · {text.goalTitle(session.kind, session.title)}
-        {session.kind === "lesson" && ` · ${text.quiz.attempt(quiz.number, quiz.maxAttempts)}`}
-      </span>
+      <span className="muted quiz-top-title">{text.quiz.topTitle(session.kind, session.title, quiz.number, quiz.maxAttempts)}</span>
       {segments && (
         <span className="quiz-segments" role="img" aria-label={text.quiz.progress(right, wrong, quiz.questions.length)}>
           {quiz.questions.map((q, i) => (
-            <span key={q.id} className={q.answered ? (q.answered.correct ? "right" : "wrong") : i === current ? "now" : ""} />
+            <span key={q.id} className={resultOf(q) ?? (i === current ? "now" : "")} />
           ))}
         </span>
       )}
@@ -139,7 +141,7 @@ export function QuizScreen({
         </h1>
         <Answer key={question.id} question={question} draft={draft} onDraft={setDraft} />
         {feedback && (
-          <div className={`quiz-feedback ${feedback.correct ? "right" : "wrong"}`} aria-live="polite">
+          <div className={`quiz-feedback ${resultOf(question)}`} aria-live="polite">
             <span className="quiz-feedback-mark" aria-hidden>
               {feedback.correct ? <CheckIcon size={18} /> : <SparkleIcon size={18} />}
             </span>
@@ -202,7 +204,7 @@ function Answer({ question, draft, onDraft }: { question: QuizQuestion; draft: s
           inputMode="decimal"
           autoComplete="off"
           autoFocus
-          placeholder="0"
+          placeholder={text.quiz.numberPlaceholder}
           readOnly={!!answered}
           value={answered ? answered.answer : draft}
           onChange={(e) => onDraft(e.target.value)}
@@ -235,7 +237,7 @@ function missedObjectives(quiz: QuizAttempt): string[] {
  * A finished attempt that didn't pass: the score, each question marked right or not quite, and what comes next. After a
  * failed attempt that's going over the missed Learning Objectives with the Tutor; after the last one allowed, the Parent helps.
  */
-export function QuizScore({ session, quiz, onLeave, onGoOver }: { session: TutorSession; quiz: QuizAttempt; onLeave: () => void; onGoOver: () => void }) {
+export function ScoreScreen({ session, quiz, onLeave, onGoOver }: { session: TutorSession; quiz: QuizAttempt; onLeave: () => void; onGoOver: () => void }) {
   const score = quiz.score!;
   const missed = missedObjectives(quiz);
   return (
@@ -246,11 +248,11 @@ export function QuizScore({ session, quiz, onLeave, onGoOver }: { session: Tutor
           <span className="eyebrow">{text.quiz.attempt(quiz.number, quiz.maxAttempts)}</span>
           <p className="quiz-score-number" aria-label={text.quiz.score(score.correct, score.total)}>
             {score.correct}
-            <span>/{score.total}</span>
+            <span>{text.quiz.outOf(score.total)}</span>
           </p>
           <ol className="quiz-score-list">
             {quiz.questions.map((q) => (
-              <li key={q.id} className={q.answered?.correct ? "right" : "wrong"}>
+              <li key={q.id} className={resultOf(q)}>
                 <span className="quiz-score-mark" aria-hidden>
                   {q.answered?.correct ? <CheckIcon size={14} /> : <CloseIcon size={14} />}
                 </span>
