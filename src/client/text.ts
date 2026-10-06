@@ -23,7 +23,15 @@ export const text = {
   },
   parentArea: {
     heading: "Parent area",
-    empty: "Nothing here yet. Learners and Goals will appear here.",
     logout: "Log out",
+  },
+  curricula: {
+    heading: "Curricula",
+    none: "No Curriculum folders found. Add one to the curricula folder (see docs/curriculum-format.md).",
+    details: (district: string, grade: string, schoolYear: string) => `${district} · Grade ${grade} · ${schoolYear}`,
+    subject: (name: string, lessons: number) => `${name}: ${lessons} ${lessons === 1 ? "Lesson" : "Lessons"}`,
+    invalid: (count: number) =>
+      `This Curriculum has ${count} ${count === 1 ? "error" : "errors"} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
+    location: (file: string, line?: number) => (line === undefined ? file : `${file}:${line}`),
   },
 } as const;

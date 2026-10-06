@@ -3,6 +3,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { mkdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { curriculaDir } from "../curriculum";
 import { createApp } from "./app";
 import { openDatabase } from "./db";
 
@@ -12,7 +13,7 @@ const port = Number(process.env.PORT ?? 3000);
 const clientDir = relative(process.cwd(), fileURLToPath(new URL("../../dist/client", import.meta.url)));
 
 mkdirSync(dataDir, { recursive: true });
-const app = createApp({ db: openDatabase(join(dataDir, "home-tutor.db")) });
+const app = createApp({ db: openDatabase(join(dataDir, "home-tutor.db")), curriculaDir: curriculaDir() });
 
 app.use("*", serveStatic({ root: clientDir }));
 // Unknown non-API paths fall back to the single-page app.

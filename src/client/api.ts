@@ -1,4 +1,10 @@
-import type { ParentStatus } from "../shared/api";
+import type { CurriculumSummary, ParentStatus } from "../shared/api";
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  return res.json();
+}
 
 async function post(path: string, body: unknown): Promise<Response> {
   return fetch(path, {
@@ -9,11 +15,8 @@ async function post(path: string, body: unknown): Promise<Response> {
 }
 
 export const api = {
-  async parentStatus(): Promise<ParentStatus> {
-    const res = await fetch("/api/parent/status");
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    return res.json();
-  },
+  parentStatus: () => get<ParentStatus>("/api/parent/status"),
+  curricula: () => get<CurriculumSummary[]>("/api/parent/curricula"),
   setupParent: (password: string) => post("/api/parent/setup", { password }),
   loginParent: (password: string) => post("/api/parent/login", { password }),
   logoutParent: () => post("/api/parent/logout", {}),

@@ -35,3 +35,16 @@ button {
 .error {
   color: #b00020;
 }
+.curriculum {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+.errors li {
+  margin-bottom: 0.25rem;
+}
+main:has(.curriculum) {
+  max-width: 48rem;
+}

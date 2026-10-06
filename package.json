@@ -8,7 +8,8 @@
     "start": "vite build && tsx src/server/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "curriculum:check": "tsx src/curriculum/check.ts"
   },
   "license": "MIT",
   "description": "Self-hosted, Curriculum-driven home tutoring app",

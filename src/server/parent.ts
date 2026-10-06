@@ -3,15 +3,16 @@ import { MIN_PASSWORD_LENGTH } from "../shared/auth";
 import type { ParentStatus } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentRole, endLogin, hashPassword, requireRole, startLogin, verifyPassword } from "./auth";
+import { listCurricula } from "./curricula";
 import { parentCredential } from "./db/schema";
 
-export function parentRoutes({ db }: AppDeps) {
+export function parentRoutes({ db, curriculaDir }: AppDeps) {
   const isPasswordSet = () => db.select().from(parentCredential).get() !== undefined;
 
   // Everything mounted here requires a logged-in Parent.
   const protectedRoutes = new Hono()
     .use(requireRole(db, "parent"))
-    .get("/area", (c) => c.json({}));
+    .get("/curricula", (c) => c.json(listCurricula(curriculaDir)));
 
   return new Hono()
     .get("/status", (c) => {

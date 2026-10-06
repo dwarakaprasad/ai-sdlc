@@ -1,13 +1,17 @@
 import { createApp } from "../../src/server/app";
 import { openDatabase } from "../../src/server/db";
+import { writeFixture } from "./curriculumFixture";
 
 /**
  * The main test seam: the Hono app called in-process (no network listener)
- * against a fresh in-memory SQLite database. Each client keeps its own cookies,
+ * against a fresh in-memory SQLite database and a Curriculum folder (empty unless given). Each client keeps its own cookies,
  * so two clients act like two browsers.
  */
-export function createTestApp() {
-  const app = createApp({ db: openDatabase(":memory:") });
+export function createTestApp(options: { curriculaDir?: string } = {}) {
+  const app = createApp({
+    db: openDatabase(":memory:"),
+    curriculaDir: options.curriculaDir ?? writeFixture({}),
+  });
 
   function client() {
     let cookie = "";

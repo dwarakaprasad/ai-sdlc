@@ -83,7 +83,7 @@ describe("Parent route protection", () => {
     const { client } = createTestApp();
     await client()("/api/parent/setup", { password: "correct horse" });
 
-    const res = await client()("/api/parent/area");
+    const res = await client()("/api/parent/curricula");
 
     expect(res.status).toBe(401);
   });
@@ -92,7 +92,7 @@ describe("Parent route protection", () => {
     const request = createTestApp().client();
     await request("/api/parent/setup", { password: "correct horse" });
 
-    const res = await request("/api/parent/area");
+    const res = await request("/api/parent/curricula");
 
     expect(res.status).toBe(200);
   });
@@ -103,6 +103,6 @@ describe("Parent route protection", () => {
 
     await request("/api/parent/logout", {});
 
-    expect((await request("/api/parent/area")).status).toBe(401);
+    expect((await request("/api/parent/curricula")).status).toBe(401);
   });
 });
