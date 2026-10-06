@@ -1,5 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalStatus } from "../shared/api";
+import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
@@ -13,6 +13,8 @@ function formatDate(date: string): string {
 /** All UI text, in one place for later translation (English only in v1). */
 export const text = {
   appName: "Home Tutor",
+  /** A Goal's title as shown everywhere: a Unit Test's is its Unit's, so it says what it is. */
+  goalTitle: (kind: GoalKind, title: string) => (kind === "unit-test" ? `Unit Test: ${title}` : title),
   loading: "Loading…",
   genericError: "Something went wrong. Please try again.",
   setup: {
@@ -63,7 +65,7 @@ export const text = {
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
   },
   quiz: {
-    heading: "Lesson Quiz",
+    heading: { lesson: "Lesson Quiz", "unit-test": "Unit Test" } satisfies Record<GoalKind, string>,
     attempt: (number: number, max: number) => `Quiz ${number} of ${max}`,
     start: "Start the Quiz",
     startAgain: "Start the new Quiz",
@@ -80,10 +82,10 @@ export const text = {
     next: "Next question",
     seeScore: "See my score",
     score: (correct: number, total: number) => `You got ${correct} out of ${total} right.`,
-    met: "You've mastered this Lesson. Goal met!",
+    met: { lesson: "You've mastered this Lesson. Goal met!", "unit-test": "You've passed the Unit Test. Goal met!" } satisfies Record<GoalKind, string>,
     reTeach: "Let's look again at the parts you missed, then try a new quiz.",
     continue: "Continue",
-    ended: "You worked really hard on this quiz. That's all for this Lesson today, and your Parent will help you with it next.",
+    ended: "You worked really hard on this quiz. That's all for today, and your Parent will help you with it next.",
     failed: "The Tutor couldn't do that just then.",
     errors: {
       invalidAnswer: "Choose one of the answers, or for a number question, type a number.",

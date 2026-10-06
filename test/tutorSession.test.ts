@@ -11,6 +11,7 @@ describe("Starting a Tutor Session", () => {
     const session = await res.json();
     expect(session).toEqual({
       id: expect.any(Number),
+      kind: "lesson",
       subjectName: "Math",
       title: "Understanding ratios",
       step: "explanation",
@@ -194,6 +195,7 @@ describe("Resuming a Session", () => {
 
     expect(resumed).toEqual({
       id: sessionId,
+      kind: "lesson",
       subjectName: "Math",
       title: "Understanding ratios",
       step: "understanding-check",

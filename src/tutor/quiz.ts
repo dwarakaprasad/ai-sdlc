@@ -30,14 +30,20 @@ export function quizLength(learningObjectives: number): number {
 /**
  * Generates a new attempt's questions through structured output. Questions that don't hold together (a multiple-choice
  * answer key that isn't a choice, a number answer that isn't a number, an unknown Learning Objective) and any repeat of
- * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when fewer than 10 are left, or they leave a Learning Objective untested.
+ * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when fewer than 10 are left, or they leave
+ * a Learning Objective untested (for a Unit Test with more Learning Objectives than questions: unless every question tests
+ * a different one).
  */
 export async function generateQuiz(llm: TutorLlm, lesson: TutorLesson, grade: string, earlierPrompts: string[]): Promise<GeneratedQuestion[]> {
   const length = quizLength(lesson.learningObjectives.length);
   const earlier = earlierPrompts.length === 0 ? "" : `\n\nThe Learner has already seen these questions. Write completely new ones, not rewordings of them:\n${bullets(earlierPrompts)}`;
+  const coverage =
+    lesson.learningObjectives.length <= length
+      ? "together cover every Learning Objective, about evenly"
+      : "each test a different Learning Objective, picked from across the whole list";
   const system = `You write quizzes for a child's tutoring Lesson.\n\n${lessonContext(lesson, grade)}\n\n${GUARDRAILS}
 
-Write a quiz of exactly ${length} questions that together cover every Learning Objective, about evenly. Mix the question types:
+Write a quiz of exactly ${length} questions that ${coverage}. Mix the question types:
 - "multiple-choice": 3 or 4 choices, exactly one right; "answer" is the right choice, written exactly as in "choices".
 - "number": the answer is a single number, written as digits (a whole number, decimal or fraction like 3/4); "choices" is empty.
 - "short-answer": the Learner writes a word, phrase or sentence; "answer" is a model answer; "choices" is empty.
@@ -56,7 +62,7 @@ Each question's "objective" is the Learning Objective it tests, copied exactly.$
   }
   if (questions.length < QUIZ_LENGTH.min) throw new LlmError("failed", `The generated quiz had only ${questions.length} usable new questions.`);
   const quiz = questions.slice(0, length);
-  if (lesson.learningObjectives.some((objective) => !quiz.some((q) => q.objective === objective))) {
+  if (new Set(quiz.map((q) => q.objective)).size < Math.min(length, lesson.learningObjectives.length)) {
     throw new LlmError("failed", "The generated quiz left a Learning Objective untested.");
   }
   return quiz;

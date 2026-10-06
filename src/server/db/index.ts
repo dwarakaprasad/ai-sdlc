@@ -11,6 +11,9 @@ export type Db = ReturnType<typeof openDatabase>;
 /** What reads need, which a transaction also offers, so a helper that only reads can run inside one. */
 export type DbReader = Pick<Db, "select">;
 
+/** What reads and writes need, which a transaction also offers, so a helper can run inside its caller's transaction. */
+export type DbWriter = Pick<Db, "select" | "insert" | "update">;
+
 /** Opens (or creates) the SQLite database at `path` and applies migrations. Use ":memory:" in tests. */
 export function openDatabase(path: string) {
   const sqlite = new Database(path);

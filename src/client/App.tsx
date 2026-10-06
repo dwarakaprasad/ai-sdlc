@@ -417,7 +417,7 @@ function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout
       {cards?.map((card) => (
         <article key={card.id} className={card.overdue ? "card goal-card catch-up" : "card goal-card"}>
           <p className="subject">{card.subjectName}</p>
-          <h2>{card.title}</h2>
+          <h2>{text.goalTitle(card.kind, card.title)}</h2>
           {/* Gentle wording for the Learner; the Parent sees "Overdue" plainly. */}
           <p className="hint">{card.overdue ? text.learnerHome.catchUp : text.learnerHome.target(card.targetDate)}</p>
           <button type="button" onClick={() => setOpenGoal(card.id)}>
@@ -500,7 +500,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
       {session && (
         <>
           <p className="subject">{session.subjectName}</p>
-          <h1>{session.title}</h1>
+          <h1>{text.goalTitle(session.kind, session.title)}</h1>
           <ol className="transcript">
             {session.messages.map((m, i) => (
               <li key={i} className={m.role}>
@@ -630,7 +630,7 @@ function QuizPanel({
 
   const heading = (
     <h2>
-      {text.quiz.heading}
+      {text.quiz.heading[session.kind]}
       {quiz.number > 1 && <span className="hint"> · {text.quiz.attempt(quiz.number, quiz.maxAttempts)}</span>}
     </h2>
   );
@@ -640,7 +640,7 @@ function QuizPanel({
       <div className="quiz card" aria-live="polite">
         {heading}
         <p className="score">{text.quiz.score(quiz.score.correct, quiz.score.total)}</p>
-        {session.step === "goal-met" && <p>{text.quiz.met}</p>}
+        {session.step === "goal-met" && <p>{text.quiz.met[session.kind]}</p>}
         {session.step === "ended" && <p className="hint">{text.quiz.ended}</p>}
         {session.step === "re-teaching" && (
           <>
@@ -840,7 +840,7 @@ function Goals({ learner }: { learner: Learner }) {
           const sameSubject = (other: Goal | undefined) => other?.subjectKey === goal.subjectKey;
           return (
             <li key={goal.id}>
-              {text.goals.goal(goal.subjectName, goal.title, goal.targetDate)}
+              {text.goals.goal(goal.subjectName, text.goalTitle(goal.kind, goal.title), goal.targetDate)}
               {text.goals.status[goal.status] && ` · ${text.goals.status[goal.status]}`}
               {goal.overdue && <span className="overdue"> · {text.goals.overdue}</span>}
               <span className="goal-actions">

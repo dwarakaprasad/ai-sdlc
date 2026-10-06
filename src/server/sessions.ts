@@ -4,13 +4,13 @@ import { streamSSE } from "hono/streaming";
 import { LlmError } from "../llm/provider";
 import { ENDING_STEPS, TUTOR_STARTED_STEPS, type AnswerResult, type QuizAttempt, type SessionMessage, type TurnEvents, type TutorSession } from "../shared/api";
 import {
-  START_STATE,
   afterAttempt,
   checkAnswer,
   checkTurn,
   generateQuiz,
   gradeAnswer,
   missedObjectives,
+  startState,
   tutorTurn,
   type Grade,
   type TurnOutcome,
@@ -19,11 +19,12 @@ import {
 import type { AppDeps } from "./deps";
 import type { Db, DbReader } from "./db";
 import { goals, messages, quizAttempts, quizQuestions, sessions } from "./db/schema";
-import { lessonOfGoal, type GoalRow } from "./goals";
+import { contentOfGoal, meetGoal, type GoalContent, type GoalRow } from "./goals";
 import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
 import { appLlm } from "./llm";
 import { teachingSettings } from "./settings";
+import { localDate } from "./usage";
 
 type SessionRow = typeof sessions.$inferSelect;
 type AttemptRow = typeof quizAttempts.$inferSelect;
@@ -33,17 +34,10 @@ type QuestionRow = typeof quizQuestions.$inferSelect;
 export function learnerSessionRoutes(deps: AppDeps) {
   const { db, curriculaDir, now } = deps;
 
-  /** The Lesson a Goal teaches, as the Tutor needs it; undefined when it can't be taught right now. */
+  /** The Lesson (or Unit, for a Unit Test) a Goal teaches, as the Tutor needs it; undefined when it can't be taught right now. */
   const tutorLesson = (learner: LearnerRow, goal: GoalRow): TutorLesson | undefined => {
-    const found = lessonOfGoal(curriculaDir, learner, goal);
-    if (!found) return undefined;
-    const { subject, lesson } = found;
-    return {
-      subjectName: subject.name,
-      title: lesson.title,
-      learningObjectives: lesson.learningObjectives,
-      tutoringInstructions: subject.tutoringInstructions,
-    };
+    const content = contentOfGoal(curriculaDir, learner, goal);
+    return content && toTutorLesson(content);
   };
 
   return new Hono()
@@ -65,7 +59,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (open) return c.json(toTutorSession(db, open, lesson));
       const session = db
         .insert(sessions)
-        .values({ goalId: goal.id, ...START_STATE, startedAt: now() })
+        .values({ goalId: goal.id, ...startState(goal.kind), startedAt: now() })
         .returning()
         .get();
       return c.json(toTutorSession(db, session, lesson), 201);
@@ -204,22 +198,35 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (typeof answer !== "string" || answer.trim() === "") return c.json({ error: "answerRequired" }, 400);
       const given = answer.trim();
       if (checkAnswer(question, given) === "invalidAnswer") return c.json({ error: "invalidAnswer" }, 400);
-      const lesson = tutorLesson(learner, goal);
-      if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
+      const content = contentOfGoal(curriculaDir, learner, goal);
+      if (!content) return c.json({ error: "lessonUnavailable" }, 409);
+      const lesson = toTutorLesson(content);
 
       const grade = await llmCall(() => gradeAnswer(appLlm(deps), lesson, learner.grade, question, given));
       if (!grade) return c.json({ error: "llmFailed" }, 502);
 
-      const result = saveAnswer(db, { session, goal, attempt, question, answer: given, grade, at: now() });
+      const result = saveAnswer(db, { session, goal, content, attempt, question, answer: given, grade, at: now() });
       if (!result) return c.json({ error: "sessionChanged" }, 409);
       return c.json(result);
     });
 }
 
-/** Saves a graded answer and, when it was the attempt's last, the score and where it leads; undefined if it was answered already. */
+/**
+ * Saves a graded answer and, when it was the attempt's last, the score and where it leads: a met Goal moves its Subject's
+ * queue on to the next Goal. Undefined if the question was answered already.
+ */
 function saveAnswer(
   db: Db,
-  { session, goal, attempt, question, answer, grade, at }: { session: SessionRow; goal: GoalRow; attempt: AttemptRow; question: QuestionRow; answer: string; grade: Grade; at: Date },
+  {
+    session,
+    goal,
+    content,
+    attempt,
+    question,
+    answer,
+    grade,
+    at,
+  }: { session: SessionRow; goal: GoalRow; content: GoalContent; attempt: AttemptRow; question: QuestionRow; answer: string; grade: Grade; at: Date },
 ): AnswerResult | undefined {
   const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey };
   return db.transaction((tx) => {
@@ -240,12 +247,8 @@ function saveAnswer(
       .set({ step: outcome.step, endedAt: ENDING_STEPS.includes(outcome.step) ? at : null })
       .where(eq(sessions.id, session.id))
       .run();
-    if (ENDING_STEPS.includes(outcome.step)) {
-      tx.update(goals)
-        .set({ status: outcome.passed ? "met" : "flagged" })
-        .where(eq(goals.id, goal.id))
-        .run();
-    }
+    if (outcome.passed) meetGoal(tx, content.subject, goal, localDate(at));
+    else if (outcome.step === "ended") tx.update(goals).set({ status: "flagged" }).where(eq(goals.id, goal.id)).run();
     return { feedback, step: outcome.step, score: { correct, total, passed: outcome.passed } };
   });
 }
@@ -255,12 +258,17 @@ function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): Tutor
   const attempt = latestAttempt(db, session.id);
   return {
     id: session.id,
+    kind: lesson.kind,
     subjectName: lesson.subjectName,
     title: lesson.title,
     step: session.step,
     messages: transcriptOf(db, session.id),
     ...(attempt && { quiz: toQuizAttempt(attempt, questionsOf(db, attempt.id), teachingSettings(db).maxQuizAttempts) }),
   };
+}
+
+function toTutorLesson({ subject, kind, title, learningObjectives }: GoalContent): TutorLesson {
+  return { kind, subjectName: subject.name, title, learningObjectives, tutoringInstructions: subject.tutoringInstructions };
 }
 
 /** Runs an LLM call, turning its failure into undefined; nothing is kept from a failed call, so the Learner can simply try again. */

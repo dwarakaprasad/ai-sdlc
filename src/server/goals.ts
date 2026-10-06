@@ -1,13 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { join } from "node:path";
-import { loadCurriculum, type Curriculum, type Lesson, type Subject, type Term } from "../curriculum";
+import { loadCurriculum, type Curriculum, type Subject, type Term } from "../curriculum";
 import type { Goal, GoalCard, GoalKind, GoalStatus, LessonOption } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { parseId, readJsonObject } from "./http";
 import { learnerFromPath, type LearnerRow } from "./learners";
 import { localDate } from "./usage";
-import type { Db, DbReader } from "./db";
+import type { Db, DbReader, DbWriter } from "./db";
 import { goals } from "./db/schema";
 
 export type GoalRow = typeof goals.$inferSelect;
@@ -53,16 +53,61 @@ function targetsFor(curriculaDir: string, learner: LearnerRow): Map<string, Targ
   return targets;
 }
 
-/** The Lesson a lesson Goal points at, with its Subject; undefined for a Unit Test or while the Lesson or Curriculum is gone or invalid. */
-export function lessonOfGoal(curriculaDir: string, learner: LearnerRow, goal: GoalRow): { subject: Subject; lesson: Lesson } | undefined {
-  if (goal.kind !== "lesson") return undefined;
-  for (const subject of curriculumOf(curriculaDir, learner)?.subjects ?? []) {
-    for (const unit of subject.terms.flatMap((t) => t.units)) {
-      const lesson = unit.lessons.find((l) => l.key === goal.curriculumKey);
-      if (lesson) return { subject, lesson };
+/** What a Goal teaches and tests, with its Subject: one Lesson's Learning Objectives, or for a Unit Test every one of its Unit's. */
+export type GoalContent = { subject: Subject; kind: GoalKind; title: string; learningObjectives: string[] };
+
+/** What a Goal teaches and tests; undefined while its Lesson or Unit, or the Curriculum, is gone or invalid. */
+export function contentOfGoal(curriculaDir: string, learner: LearnerRow, goal: GoalRow): GoalContent | undefined {
+  const subject = curriculumOf(curriculaDir, learner)?.subjects.find((s) => s.key === goal.subjectKey);
+  if (!subject) return undefined;
+  for (const unit of subject.terms.flatMap((t) => t.units)) {
+    if (goal.kind === "unit-test" && unit.key === goal.curriculumKey) {
+      // Two Lessons may share a Learning Objective; the Unit Test tests it once.
+      const learningObjectives = [...new Set(unit.lessons.flatMap((l) => l.learningObjectives))];
+      return { subject, kind: goal.kind, title: unit.title, learningObjectives };
     }
+    const lesson = goal.kind === "lesson" ? unit.lessons.find((l) => l.key === goal.curriculumKey) : undefined;
+    if (lesson) return { subject, kind: goal.kind, title: lesson.title, learningObjectives: lesson.learningObjectives };
   }
   return undefined;
+}
+
+/**
+ * Marks a Goal met and moves its Subject's queue on, inside the caller's transaction. Once every Lesson of a met Lesson's
+ * Unit is met, the Unit's Unit Test is the next Goal, ahead of anything the Parent queued. Otherwise, while the Parent has
+ * queued nothing else still to be met, the first Lesson in Curriculum order from the Unit's start (on into the next Term)
+ * that has no Goal yet joins the end of the queue as the next Goal. A new Goal takes the met Goal's Target Date, or today if that has passed,
+ * so it never starts overdue.
+ */
+export function meetGoal(db: DbWriter, subject: Subject, goal: GoalRow, today: string): void {
+  db.update(goals).set({ status: "met" }).where(eq(goals.id, goal.id)).run();
+  const units = subject.terms.flatMap((t) => t.units);
+  const unit = units.find((u) => u.key === goal.curriculumKey || u.lessons.some((l) => l.key === goal.curriculumKey));
+  if (!unit) return;
+
+  const queue: QueueEntry[] = subjectQueue(db, goal.learnerId, subject.key);
+  /** Whether the Lesson has a Goal in the queue, one with `status` if given. */
+  const hasGoal = (lessonKey: string, status?: GoalStatus) =>
+    queue.some((g) => g.kind === "lesson" && g.curriculumKey === lessonKey && (status === undefined || g.status === status));
+  const unitTestDue =
+    goal.kind === "lesson" &&
+    unit.lessons.every((l) => hasGoal(l.key, "met")) &&
+    !queue.some((g) => g.kind === "unit-test" && g.curriculumKey === unit.key && g.status !== "skipped");
+  const targetDate = goal.targetDate < today ? today : goal.targetDate;
+
+  if (unitTestDue) {
+    queue.splice(queue.findIndex((g) => "id" in g && g.id === goal.id) + 1, 0, newGoal(goal.learnerId, subject.key, "unit-test", unit.key, targetDate));
+    saveQueue(db, queue);
+    return;
+  }
+  if (queue.some((g) => isToBeMet(g.status))) return;
+  const lessons = units.flatMap((u) => u.lessons);
+  // From the Unit's first Lesson, so one left behind (the Parent started the Unit part-way) comes before the next Unit.
+  const from = lessons.findIndex((l) => l.key === unit.lessons[0]?.key);
+  const lesson = lessons.slice(from).find((l) => !hasGoal(l.key));
+  if (!lesson) return;
+  queue.push(newGoal(goal.learnerId, subject.key, "lesson", lesson.key, targetDate));
+  saveQueue(db, queue);
 }
 
 /** Overdue: the Target Date has passed and the Goal is still to be met. Never stored, so it is always current. */
@@ -100,7 +145,7 @@ export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
   return [...current.values()]
     .filter((goal) => goal.status === "active")
     .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.subjectName.localeCompare(b.subjectName))
-    .map(({ id, subjectName, title, targetDate, overdue }) => ({ id, subjectName, title, targetDate, overdue }));
+    .map(({ id, kind, subjectName, title, targetDate, overdue }) => ({ id, kind, subjectName, title, targetDate, overdue }));
 }
 
 /** The Parent's Goals for one Learner, mounted under the Parent's protected routes at /learners/:id. */
@@ -136,8 +181,8 @@ export function parentGoalRoutes(deps: AppDeps) {
       // A new Goal joins the end of its Subject's queue, unless the Parent inserts it before one of that Subject's Goals.
       const place = beforeGoalId === undefined ? queue.length : queue.findIndex((goal) => "id" in goal && goal.id === beforeGoalId);
       if (place === -1) return c.json({ error: "invalidPosition" }, 400);
-      queue.splice(place, 0, newLessonGoal(learner, target.subjectKey, lessonKey, targetDate));
-      const row = saveQueue(db, queue)[place]!;
+      queue.splice(place, 0, newGoal(learner.id, target.subjectKey, "lesson", lessonKey, targetDate));
+      const row = db.transaction((tx) => saveQueue(tx, queue))[place]!;
       return c.json(toGoal(row, target, localDate(now())), 201);
     })
     .post("/goals/spread", async (c) => {
@@ -151,7 +196,7 @@ export function parentGoalRoutes(deps: AppDeps) {
       if (typeof termEndDate !== "string" || !isCalendarDate(termEndDate)) return c.json({ error: "invalidTermEndDate" }, 400);
       const today = localDate(now());
       if (termEndDate < today) return c.json({ error: "termEndDatePassed" }, 400);
-      spreadTargetDates(db, learner, located.subject, located.term, today, termEndDate);
+      db.transaction((tx) => spreadTargetDates(tx, learner, located.subject, located.term, today, termEndDate));
       return c.json(goalsOf(deps, learner));
     })
     .put("/goals/order", async (c) => {
@@ -160,7 +205,7 @@ export function parentGoalRoutes(deps: AppDeps) {
       const { goalIds } = (await readJsonObject(c)) ?? {};
       const queue = reorderedQueue(db, learner, goalIds);
       if (!queue) return c.json({ error: "invalidOrder" }, 400);
-      saveQueue(db, queue);
+      db.transaction((tx) => saveQueue(tx, queue));
       return c.json(goalsOf(deps, learner));
     })
     .patch("/goals/:goalId", async (c) => {
@@ -213,8 +258,9 @@ function termOf(curriculaDir: string, learner: LearnerRow, termKey: string): { s
 type NewGoal = Omit<GoalRow, "id" | "position">;
 type QueueEntry = GoalRow | NewGoal;
 
-function newLessonGoal(learner: LearnerRow, subjectKey: string, lessonKey: string, targetDate: string): NewGoal {
-  return { learnerId: learner.id, subjectKey, curriculumKey: lessonKey, kind: "lesson", targetDate, status: "active" };
+/** An active Goal for a Lesson, or for a Unit's Unit Test with the Unit key. */
+function newGoal(learnerId: number, subjectKey: string, kind: GoalKind, curriculumKey: string, targetDate: string): NewGoal {
+  return { learnerId, subjectKey, curriculumKey, kind, targetDate, status: "active" };
 }
 
 /** One Learner's Goal queue for a Subject, in order. */
@@ -239,22 +285,20 @@ function reorderedQueue(db: DbReader, learner: LearnerRow, goalIds: unknown): Go
 }
 
 /**
- * Saves a Subject's queue as given: new Goals are created, and every Goal takes its place in the order and its Target Date.
- * Returns the saved Goals in queue order.
+ * Saves a Subject's queue as given, inside the caller's transaction: new Goals are created, and every Goal takes its place
+ * in the order and its Target Date. Returns the saved Goals in queue order.
  */
-function saveQueue(db: Db, queue: QueueEntry[]): GoalRow[] {
-  return db.transaction((tx) =>
-    queue.map((entry, i) => {
-      const position = i + 1;
-      return "id" in entry
-        ? tx.update(goals).set({ position, targetDate: entry.targetDate }).where(eq(goals.id, entry.id)).returning().get()!
-        : tx
-            .insert(goals)
-            .values({ ...entry, position })
-            .returning()
-            .get();
-    }),
-  );
+function saveQueue(db: DbWriter, queue: QueueEntry[]): GoalRow[] {
+  return queue.map((entry, i) => {
+    const position = i + 1;
+    return "id" in entry
+      ? db.update(goals).set({ position, targetDate: entry.targetDate }).where(eq(goals.id, entry.id)).returning().get()!
+      : db
+          .insert(goals)
+          .values({ ...entry, position })
+          .returning()
+          .get();
+  });
 }
 
 /**
@@ -276,7 +320,7 @@ function curriculumPlaces(subject: Subject): Map<string, number> {
  * Unit Tests), in queue order; the last lands on the end date. A Lesson with no Goal yet gets one, queued after the Goal
  * of the nearest earlier Lesson in Curriculum order, so the Parent's own ordering is kept. Met and skipped Goals are left alone.
  */
-function spreadTargetDates(db: Db, learner: LearnerRow, subject: Subject, term: Term, today: string, termEndDate: string) {
+function spreadTargetDates(db: DbWriter, learner: LearnerRow, subject: Subject, term: Term, today: string, termEndDate: string) {
   const places = curriculumPlaces(subject);
   const queue: QueueEntry[] = subjectQueue(db, learner.id, subject.key);
   const termLessons = term.units.flatMap((u) => u.lessons).map((l) => l.key);
@@ -287,7 +331,7 @@ function spreadTargetDates(db: Db, learner: LearnerRow, subject: Subject, term: 
     queue.forEach((goal, i) => {
       if ((places.get(goal.curriculumKey) ?? Infinity) < place) after = i;
     });
-    queue.splice(after + 1, 0, newLessonGoal(learner, subject.key, lessonKey, termEndDate));
+    queue.splice(after + 1, 0, newGoal(learner.id, subject.key, "lesson", lessonKey, termEndDate));
   }
 
   const termKeys = new Set([...termLessons, ...term.units.map((u) => u.key)]);
