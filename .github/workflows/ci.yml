@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, make-a-better-ui]
+
+permissions:
+  contents: read
+
+# A newer push to the same PR or branch supersedes the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: check (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest Node the README promises, and the one the Docker image runs.
+        node: ["20.12", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run curriculum:check
+
+  # The one check branch protection requires, so the Node versions above can change without editing the rules.
+  ci:
+    if: always()
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every check passed
+        run: test "${{ needs.check.result }}" = success
