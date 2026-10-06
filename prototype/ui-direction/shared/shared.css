@@ -1,0 +1,29 @@
+/* PROTOTYPE (throwaway): reset, font, motion helpers shared by all three directions. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { margin: 0; min-height: 100%; }
+body { font-family: "Nunito Variable", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.katex { font-size: 1.08em; }
+
+.confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.confetti i { position: absolute; width: 9px; height: 14px; opacity: 0; animation: confetti-fall linear infinite; }
+@keyframes confetti-fall {
+  0% { opacity: 1; translate: 0 -60vh; }
+  85% { opacity: 1; }
+  100% { opacity: 0; translate: 30px 70vh; }
+}
+@keyframes bounce-in { 0% { transform: scale(.6); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes pop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
+@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 var(--pulse, rgba(88,204,2,.5)); } 100% { box-shadow: 0 0 0 16px transparent; } }
+@keyframes blink { 50% { opacity: 0; } }
+.screen-enter { animation: fade-in .28s ease-out both; }
+.caret::after { content: "▍"; margin-left: 2px; animation: blink 1s steps(1) infinite; opacity: .5; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+  .confetti i { opacity: 1 !important; translate: 0 0 !important; animation: none !important; }
+}
+.tutor { flex: none; }
