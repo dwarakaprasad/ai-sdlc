@@ -19,7 +19,7 @@ const QUIZ = Array.from({ length: 10 }, (_, i) => ({
 /** A YYYY-MM-DD date `days` from today. */
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
-test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, passes the Lesson Quiz and meets the Goal", async ({ page, tutor }) => {
+test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, passes the Lesson Quiz and meets the Goal", async ({ page, llm }) => {
   await page.goto("/");
 
   // The Parent sets the password on a fresh install.
@@ -48,7 +48,7 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   await page.getByRole("button", { name: "Ada" }).click();
   await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
   const goal = page.getByRole("article").filter({ hasText: "Understanding ratios" });
-  await tutor.replyWith(EXPLANATION, { pieceDelayMs: 100 });
+  await llm.replyWith(EXPLANATION, { pieceDelayMs: 100 });
   await goal.getByRole("button", { name: "Start" }).click();
 
   // The Explanation streams in: its start shows before its end has arrived.
@@ -59,14 +59,14 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   await expect(transcript).toContainText(EXPLANATION);
 
   // The Learner answers the Understanding Check and the Tutor moves on to the Quiz.
-  await tutor.decideWith({ verdict: "advance" });
-  await tutor.replyWith("Well done! 4 to 5 is right. A short quiz comes next.");
+  await llm.decideWith({ verdict: "advance" });
+  await llm.replyWith("Well done! 4 to 5 is right. A short quiz comes next.");
   await page.getByLabel("Your answer").fill("4 to 5");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(transcript).toContainText("Well done! 4 to 5 is right.");
 
   // The Lesson Quiz, every answer right.
-  await tutor.decideWith({ questions: QUIZ });
+  await llm.decideWith({ questions: QUIZ });
   await page.getByRole("button", { name: "Start the Quiz" }).click();
   for (const [i, question] of QUIZ.entries()) {
     await expect(page.getByText(`Question ${i + 1} of ${QUIZ.length}`)).toBeVisible();

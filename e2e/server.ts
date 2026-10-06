@@ -2,8 +2,6 @@ import { Hono } from "hono";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
-import type { LlmProvider } from "../src/llm/provider";
 import { createApp } from "../src/server/app";
 import { openDatabase } from "../src/server/db";
 import { serveWithClient } from "../src/server/serve";
@@ -17,32 +15,22 @@ import { fakeForEveryProvider } from "../test/support/testApp";
  * so no API key is needed. Tests script the fake and reset the install over the /__e2e routes, which exist only here.
  */
 
-const port = Number(process.env.PORT ?? 3100);
+// playwright.config.ts picks the port.
+const port = Number(process.env.PORT);
+if (!port) throw new Error("Set PORT to run the server in end-to-end mode.");
 const curriculaDir = writeFixture(inFolder("grade-6", validCurriculum));
 
 /** A fresh install: an empty database and a fake LLM with nothing scripted. `close` deletes the database. */
 function freshInstall() {
   const dataDir = mkdtempSync(join(tmpdir(), "home-tutor-e2e-"));
   const llm = createFakeLlm();
-  /** How long to wait between the pieces of each queued reply, in queue order. */
-  const pieceDelays: number[] = [];
-  const paced: LlmProvider = {
-    ...llm.provider,
-    async *chat(request) {
-      const delay = pieceDelays.shift() ?? 0;
-      for await (const event of llm.provider.chat(request)) {
-        if (delay > 0) await sleep(delay);
-        yield event;
-      }
-    },
-  };
   const db = openDatabase(join(dataDir, "home-tutor.db"));
-  const app = createApp({ db, curriculaDir, providers: fakeForEveryProvider({ ...llm, provider: paced }), now: () => new Date() });
+  const app = createApp({ db, curriculaDir, providers: fakeForEveryProvider(llm), now: () => new Date() });
   const close = () => {
     db.$client.close();
     rmSync(dataDir, { recursive: true, force: true });
   };
-  return { app, llm, pieceDelays, close };
+  return { app, llm, close };
 }
 
 let install = freshInstall();
@@ -55,9 +43,8 @@ const app = new Hono()
     return c.body(null, 204);
   })
   .post("/__e2e/llm/reply", async (c) => {
-    const { reply, pieceDelayMs = 0 } = await c.req.json<{ reply: string; pieceDelayMs?: number }>();
-    install.llm.replyWith(reply);
-    install.pieceDelays.push(pieceDelayMs);
+    const { reply, pieceDelayMs } = await c.req.json<{ reply: string; pieceDelayMs?: number }>();
+    install.llm.replyWith(reply, undefined, { pieceDelayMs });
     return c.body(null, 204);
   })
   .post("/__e2e/llm/decide", async (c) => {

@@ -34,7 +34,7 @@ jobs:
       - run: npm run build
       - run: npm run curriculum:check
 
-  # Whole journeys in a real browser, against the server in end-to-end mode (no API key needed).
+  # Whole user flows in a real browser, against the server in end-to-end mode (no API key needed).
   e2e:
     runs-on: ubuntu-latest
     steps:
