@@ -120,7 +120,6 @@ export const text = {
     start: "Start",
   },
   learningPath: {
-    back: "Today",
     unit: (n: number) => `Unit ${n}`,
     lesson: (unit: number, n: number) => `Lesson ${unit}.${n}`,
     unitTest: "Unit Test",
@@ -130,7 +129,6 @@ export const text = {
     ring: (met: number, total: number) => `${met} of ${total} done this Term`,
     ringOf: (total: number) => `of ${total}`,
     noPath: "Your Learning Path shows up here once your Parent sets a Goal in this Subject.",
-    start: "Start",
   },
   learnerNav: {
     today: "Today",

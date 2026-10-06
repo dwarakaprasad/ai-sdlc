@@ -8,18 +8,15 @@ import { text } from "../text";
 
 /**
  * A Subject's Learning Path: a side panel with the Term, a progress ring and a legend, beside the Term's Units as timeline
- * lists. Only the current node can be started, with the Subject's current Goal; the Goal queue, not the Path, decides
- * what comes next, so nothing else on the Path can be jumped to.
+ * lists. Only the current node can be started, with its Goal; the Goal queue, not the Path, decides what comes next, so
+ * nothing else on the Path can be jumped to.
  */
 export function LearningPathScreen({
   subjectKey,
-  currentGoalId,
   onStart,
   onBack,
 }: {
   subjectKey: string;
-  /** The Subject's current Goal, which the current node starts; none while it's with the Parent. */
-  currentGoalId: number | undefined;
   onStart: (goalId: number) => void;
   onBack: () => void;
 }) {
@@ -44,7 +41,7 @@ export function LearningPathScreen({
     <div className="path">
       <aside className="path-side">
         <Button kind="quiet" onClick={onBack}>
-          <BackIcon size={16} /> {text.learningPath.back}
+          <BackIcon size={16} /> {text.learnerNav.today}
         </Button>
         <span className="eyebrow">{path.termName}</span>
         <h1 className="h1">{path.subjectName}</h1>
@@ -80,8 +77,8 @@ export function LearningPathScreen({
             <ol>
               {unit.nodes.map((node, n) => (
                 <PathStep key={`${node.kind}:${node.key}`} node={node} label={node.kind === "unit-test" ? text.learningPath.unitTest : text.learningPath.lesson(u + 1, n + 1)}>
-                  {node.state === "current" && currentGoalId !== undefined ? (
-                    <Button onClick={() => onStart(currentGoalId)}>{text.learningPath.start}</Button>
+                  {node.goalId !== undefined ? (
+                    <Button onClick={() => onStart(node.goalId!)}>{text.learnerHome.start}</Button>
                   ) : (
                     <span className="path-state">{text.learningPath.states[node.state]}</span>
                   )}

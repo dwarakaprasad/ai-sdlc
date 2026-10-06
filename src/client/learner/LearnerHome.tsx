@@ -16,7 +16,7 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
   const [error, setError] = useState<string>();
   const [openGoal, setOpenGoal] = useState<number>();
   /** The Subject whose Learning Path is showing, instead of Today. */
-  const [pathOf, setPathOf] = useState<string>();
+  const [pathSubjectKey, setPathSubjectKey] = useState<string>();
   const loadToday = () => void api.today().then(setToday, () => setError(text.genericError));
   useEffect(loadToday, []);
 
@@ -29,10 +29,10 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
     <div className="learner-app">
       <TopBar
         nav={[
-          { label: text.learnerNav.today, current: pathOf === undefined, onSelect: () => (setPathOf(undefined), loadToday()) },
+          { label: text.learnerNav.today, current: pathSubjectKey === undefined, onSelect: () => (setPathSubjectKey(undefined), loadToday()) },
           // The Path of the Subject to continue: the first on Today.
           ...(today?.subjects[0]
-            ? [{ label: text.learnerNav.learningPath, current: pathOf !== undefined, onSelect: () => setPathOf(pathOf ?? today.subjects[0]!.subjectKey) }]
+            ? [{ label: text.learnerNav.learningPath, current: pathSubjectKey !== undefined, onSelect: () => setPathSubjectKey(pathSubjectKey ?? today.subjects[0]!.subjectKey) }]
             : []),
         ]}
         end={
@@ -41,13 +41,12 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
           </button>
         }
       />
-      {pathOf !== undefined ? (
-        <main className="page screen-enter" key={pathOf}>
+      {pathSubjectKey !== undefined ? (
+        <main className="page screen-enter" key={pathSubjectKey}>
           <LearningPathScreen
-            subjectKey={pathOf}
-            currentGoalId={today?.subjects.find((s) => s.subjectKey === pathOf)?.card?.id}
+            subjectKey={pathSubjectKey}
             onStart={setOpenGoal}
-            onBack={() => setPathOf(undefined)}
+            onBack={() => setPathSubjectKey(undefined)}
           />
         </main>
       ) : (
@@ -55,7 +54,7 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
           <h1 className="h1">{text.learnerHome.heading(learner.name)}</h1>
           {error && <p className="text-warm">{error}</p>}
           {!today && !error && <p className="muted">{text.loading}</p>}
-          {today && <Today today={today} onStart={setOpenGoal} onOpenPath={setPathOf} />}
+          {today && <Today today={today} onStart={setOpenGoal} onOpenPath={setPathSubjectKey} />}
         </main>
       )}
     </div>

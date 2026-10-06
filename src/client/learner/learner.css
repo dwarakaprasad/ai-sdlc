@@ -190,7 +190,7 @@
   color: var(--ink);
   text-decoration: underline;
   text-decoration-color: var(--line);
-  text-underline-offset: 4px;
+  text-underline-offset: var(--s-1);
 }
 .subject-row-name:hover {
   text-decoration-color: var(--ink);
@@ -238,7 +238,8 @@
 }
 .path-side {
   position: sticky;
-  top: 100px;
+  /* Below the top bar. */
+  top: calc(var(--s-9) + var(--s-8));
   align-self: start;
   display: flex;
   flex-direction: column;
@@ -329,7 +330,8 @@
 .path-step::before {
   content: "";
   position: absolute;
-  left: 29px;
+  /* Through the middle of the marks: the step's padding plus half a mark. */
+  left: calc(var(--s-4) + 13px);
   top: 0;
   bottom: 0;
   width: 2px;
@@ -355,7 +357,7 @@
   color: var(--muted);
 }
 .path-step.unit-test .path-dot {
-  border-radius: var(--s-2);
+  border-radius: var(--r-tag);
 }
 .path-text {
   flex: 1;
@@ -412,7 +414,7 @@
     box-shadow: 0 0 0 0 var(--yellow);
   }
   100% {
-    box-shadow: 0 0 0 16px transparent;
+    box-shadow: 0 0 0 var(--s-4) transparent;
   }
 }
 

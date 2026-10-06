@@ -112,7 +112,7 @@ describe("The Learning Path", () => {
       { key: lesson(1, 1), kind: "lesson", title: "Understanding ratios", state: "met" },
       { key: lesson(1, 2), kind: "lesson", title: "Equivalent ratios", state: "skipped" },
       { key: lesson(1, 3), kind: "lesson", title: "Rates", state: "ahead" },
-      { key: lesson(1, 4), kind: "lesson", title: "Ratio tables", state: "current" },
+      { key: lesson(1, 4), kind: "lesson", title: "Ratio tables", state: "current", goalId: await goalFor(lesson(1, 4)) },
       { key: unit(1), kind: "unit-test", title: "Ratios", state: "ahead" },
     ]);
     // Lessons with no Goal yet, and Unit Tests not yet created, are ahead.
@@ -120,6 +120,16 @@ describe("The Learning Path", () => {
       [lesson(2, 1), "ahead"],
       [unit(2), "ahead"],
     ]);
+  });
+
+  it("shows a Lesson met before and set again as current, so it can be started", async () => {
+    const { setGoal, states, meet, skip, goalFor } = await household();
+    await meet(await setGoal(lesson(1, 1)));
+    await skip(await goalFor(lesson(1, 2)));
+    // The Parent sets Lesson 1.1 again, for practice.
+    await setGoal(lesson(1, 1));
+
+    expect((await states())[0]![0]).toEqual([lesson(1, 1), "current"]);
   });
 
   it("shows a Flagged current Goal as with the Parent, so nothing on the Path is current", async () => {

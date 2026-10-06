@@ -169,14 +169,15 @@ export type TermProgress = { termName: string; met: number; total: number };
 export type SubjectToday = { subjectKey: string; subjectName: string; card: GoalCard | null; withParent: boolean; term: TermProgress | null };
 
 /**
- * Where a Lesson or Unit Test stands on the Learning Path, from its Goal: met, skipped, the Subject's current Goal,
- * with the Parent (Flagged, or the current Goal and Orphaned), or ahead (anything else, including no Goal yet).
+ * Where a Lesson or Unit Test stands on the Learning Path, from its Goal: the Subject's current Goal, met, with the Parent
+ * (Flagged), skipped, or ahead (anything else, including no Goal yet). An Orphaned Goal's Lesson is gone from the Curriculum,
+ * so it has no node, and while the current Goal is Orphaned nothing on the Path is current.
  */
 export const PATH_STATES = ["met", "current", "skipped", "with-parent", "ahead"] as const;
 export type PathState = (typeof PATH_STATES)[number];
 
-/** A Lesson, or a Unit's Unit Test (keyed and titled by its Unit), on the Learning Path. */
-export type PathNode = { key: string; kind: GoalKind; title: string; state: PathState };
+/** A Lesson, or a Unit's Unit Test (keyed and titled by its Unit), on the Learning Path; the current one with its Goal, to start. */
+export type PathNode = { key: string; kind: GoalKind; title: string; state: PathState; goalId?: number };
 
 /**
  * A Subject's Learning Path (GET /api/learner/subjects/:subjectKey/path): its current Term's Units in Curriculum order,

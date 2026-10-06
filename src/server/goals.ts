@@ -220,17 +220,26 @@ export function learningPathOf(deps: AppDeps, learner: LearnerRow, subjectKey: s
   const term = currentTermOf(subject, queue, current);
   if (!term) return undefined;
 
-  /** A node's state from its Goals: a Lesson may have had several (say, one skipped and a later one set again). */
-  const stateOf = (kind: GoalKind, key: string): PathState => {
+  /**
+   * A node from its Goals; a Lesson may have had several (say, one met and the same Lesson set again). The current Goal
+   * decides first, even out of Curriculum order, since the Goal queue, not the Path, says what's next; then any met Goal,
+   * a Flagged one, a skipped one; otherwise the node is ahead.
+   */
+  const node = (kind: GoalKind, key: string, title: string): PathNode => {
     const own = queue.filter((goal) => goal.kind === kind && goal.lessonKey === key);
-    if (own.some((goal) => goal.status === "met")) return "met";
-    // The current Goal decides, even out of Curriculum order: the Goal queue, not the Path, says what's next.
-    if (current && own.includes(current)) return current.status === "flagged" || current.orphaned ? "with-parent" : "current";
-    if (own.some((goal) => goal.status === "flagged")) return "with-parent";
-    if (own.some((goal) => goal.status === "skipped")) return "skipped";
-    return "ahead";
+    if (current && own.includes(current)) {
+      // An Orphaned Goal's key is gone from the Curriculum, so only a Flagged current Goal can be with the Parent here.
+      return current.status === "flagged" ? { key, kind, title, state: "with-parent" } : { key, kind, title, state: "current", goalId: current.id };
+    }
+    const state: PathState = own.some((goal) => goal.status === "met")
+      ? "met"
+      : own.some((goal) => goal.status === "flagged")
+        ? "with-parent"
+        : own.some((goal) => goal.status === "skipped")
+          ? "skipped"
+          : "ahead";
+    return { key, kind, title, state };
   };
-  const node = (kind: GoalKind, key: string, title: string): PathNode => ({ key, kind, title, state: stateOf(kind, key) });
   return {
     subjectName: subject.name,
     termName: term.name,
