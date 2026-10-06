@@ -183,21 +183,26 @@ function toGoalCard({ id, kind, subjectName, title, targetDate, overdue }: Goal)
 }
 
 /** The Term holding a Lesson, or the Unit of a Unit Test, by its key. */
-function termHolding(subject: Subject, key: string): Term | undefined {
+export function termHolding(subject: Subject, key: string): Term | undefined {
   return subject.terms.find((term) => term.units.some((unit) => unit.key === key || unit.lessons.some((lesson) => lesson.key === key)));
 }
 
 /**
- * A Subject's current Term with its met Goals out of its Lessons and Unit Tests. The current Term is the current Goal's;
- * when there's none (or it's Orphaned, so has no Term), it's the Term of the last met Goal in the queue.
+ * A Subject's current Term: the current Goal's; when there's none (or it's Orphaned, so has no Term), the Term of the last
+ * met Goal. No time is kept for when a Goal was met, so the last met is the last in queue order, the order it was worked in.
  */
-function termProgress(subject: Subject, queue: Goal[], current: Goal | undefined): TermProgress | null {
+export function currentTermOf(subject: Subject, queue: Goal[], current: Goal | undefined): Term | undefined {
   const lastMet = [...queue].reverse().find((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey));
-  const term = (current && termHolding(subject, current.lessonKey)) ?? (lastMet && termHolding(subject, lastMet.lessonKey));
+  return (current && termHolding(subject, current.lessonKey)) ?? (lastMet && termHolding(subject, lastMet.lessonKey));
+}
+
+/** A Subject's current Term with its met Lessons and Unit Tests (each once, however many Goals met it) out of all of them. */
+function termProgress(subject: Subject, queue: Goal[], current: Goal | undefined): TermProgress | null {
+  const term = currentTermOf(subject, queue, current);
   if (!term) return null;
   const total = term.units.reduce((sum, unit) => sum + unit.lessons.length + 1, 0);
-  const met = queue.filter((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey) === term).length;
-  return { termName: term.name, met, total };
+  const metKeys = new Set(queue.filter((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey) === term).map((goal) => goal.lessonKey));
+  return { termName: term.name, met: metKeys.size, total };
 }
 
 /** The Parent's Goals for one Learner, mounted under the Parent's protected routes at /learners/:id. */

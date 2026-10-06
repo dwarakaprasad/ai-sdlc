@@ -156,6 +156,16 @@ describe("Today, the Learner's home data", () => {
     expect(goalsMet).toBe(2);
   });
 
+  it("counts a Lesson met twice once in its Term's progress, and both Goals in the total", async () => {
+    const { setGoal, subject, today, meet } = await household();
+    await meet(await setGoal(ratios, "2026-10-20"));
+    // The Parent sets the same Lesson again, and Ada meets it again.
+    await meet(await setGoal(ratios, "2026-10-25"));
+
+    expect((await subject("math"))?.term).toEqual({ termName: "Term 1", met: 1, total: MATH_TERM_1 });
+    expect((await today()).goalsMet).toBe(2);
+  });
+
   it("shows the Term of the last met Goal once a Subject has nothing left to meet", async () => {
     const { setGoal, subject, meet, skip, parentGoals } = await household();
     await meet(await setGoal(expressions, "2026-10-20"));

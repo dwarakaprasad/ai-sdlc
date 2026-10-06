@@ -586,8 +586,8 @@
   font-weight: 800;
   color: var(--ink);
 }
-.goal-met-goals {
-  color: var(--gold) !important;
+.goal-met-stats .goal-met-goals {
+  color: var(--gold);
 }
 .up-next {
   display: flex;

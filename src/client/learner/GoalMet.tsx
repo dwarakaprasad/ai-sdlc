@@ -48,7 +48,7 @@ export function GoalMet({
           </div>
           {subject?.term && (
             <div>
-              <dt>{text.goalMet.thisTerm(session.subjectName)}</dt>
+              <dt>{text.goalMet.thisTerm(session.subjectName, subject.term.termName)}</dt>
               <dd>{text.learnerHome.termProgress(subject.term.met, subject.term.total)}</dd>
             </div>
           )}

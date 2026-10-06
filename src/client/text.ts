@@ -198,7 +198,7 @@ export const text = {
     scoreLine: { lesson: "on the Lesson Quiz.", "unit-test": "on the Unit Test." } satisfies Record<GoalKind, string>,
     score: (correct: number, total: number, on: string) => `${correct} of ${total} ${on} ${TUTOR_NAME} is proud of you!`,
     goalsMet: "Goals met",
-    thisTerm: (subjectName: string) => `${subjectName} this Term`,
+    thisTerm: (subjectName: string, termName: string) => `${subjectName} ${termName}`,
     upNext: "Up next",
     when: (subjectName: string, targetDate: string) => `${subjectName} · Aim to finish by ${formatDate(targetDate)}`,
     start: "Start",

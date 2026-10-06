@@ -80,7 +80,7 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   await expect(page.getByText("Goal met · Math")).toBeVisible();
   await expect(page.getByText(`${QUIZ.length} of ${QUIZ.length} on the Lesson Quiz.`)).toBeVisible();
   // The first Goal met, and the first of Math Term 1's three Lessons and two Unit Tests.
-  await expect(page.getByRole("term")).toHaveText(["Goals met", "Math this Term"]);
+  await expect(page.getByRole("term")).toHaveText(["Goals met", "Math Term 1"]);
   await expect(page.getByRole("definition")).toHaveText(["1", "1/5"]);
   const upNext = page.getByRole("article").filter({ hasText: "Up next" });
   await expect(upNext).toContainText("Equivalent ratios");
