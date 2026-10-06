@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { GoalProgress, Learner, SessionTranscript } from "../../shared/api";
 import { api } from "../api";
+import { BackIcon } from "../components/icons";
 import { MathText } from "../components/MathText";
+import { TutorMark } from "../components/TutorMark";
+import { Button, Card, Tag } from "../components/ui";
 import { text } from "../text";
 
 /**
@@ -9,105 +12,121 @@ import { text } from "../text";
  * Sessions with every finished Quiz attempt's score, and a transcript to read.
  */
 export function Progress({ learner }: { learner: Learner }) {
-  const [open, setOpen] = useState(false);
   const [progress, setProgress] = useState<GoalProgress[]>();
   const [transcript, setTranscript] = useState<SessionTranscript>();
   const [error, setError] = useState<string>();
 
-  async function toggle() {
-    if (open) return (setOpen(false), setTranscript(undefined));
-    setOpen(true);
-    setProgress(await api.progress(learner.id).catch(() => (setError(text.genericError), undefined)));
-  }
+  useEffect(() => void api.progress(learner.id).then(setProgress, () => setError(text.genericError)), [learner.id]);
 
   async function read(sessionId: number) {
     setTranscript(await api.transcript(learner.id, sessionId).catch(() => (setError(text.genericError), undefined)));
   }
 
-  const count = (has: (g: GoalProgress) => boolean) => progress?.filter(has).length ?? 0;
+  if (transcript) return <Transcript transcript={transcript} learnerName={learner.name} onClose={() => setTranscript(undefined)} />;
+  if (error) return <p className="text-warm">{error}</p>;
+  if (!progress) return <p className="muted">{text.loading}</p>;
+  if (progress.length === 0) return <p className="muted">{text.progress.noGoals}</p>;
+  const count = (has: (g: GoalProgress) => boolean) => progress.filter(has).length;
+  const summary = [
+    ["met", count((g) => g.status === "met")],
+    ["overdue", count((g) => g.overdue)],
+    ["flagged", count((g) => g.status === "flagged")],
+    ["orphaned", count((g) => g.orphaned)],
+  ] as const;
   return (
     <>
-      <button type="button" onClick={() => void toggle()}>
-        {open ? text.progress.hide : text.progress.show}
-      </button>
-      {open && error && <p className="error">{error}</p>}
-      {open && !progress && !error && <p>{text.loading}</p>}
-      {open && progress && (
-        <div className="progress">
-          <p>
-            {text.progress.summary(
-              count((g) => g.status === "met"),
-              count((g) => g.overdue),
-              count((g) => g.status === "flagged"),
-              count((g) => g.orphaned),
+      <dl className="stat-row" aria-label={text.progress.summaryLabel}>
+        {summary.map(([key, n]) => (
+          <div key={key} className={`card stat stat-${key}`}>
+            <dt className="eyebrow">{text.progress.summary[key]}</dt>
+            <dd>{n}</dd>
+          </div>
+        ))}
+      </dl>
+      <ul className="progress-goals">
+        {progress.map((goal) => (
+          <li key={goal.id} className="card progress-goal">
+            <div className="progress-goal-head">
+              <span className="eyebrow">{goal.subjectName}</span>
+              <h3 className="h3">{text.goalTitle(goal.kind, goal.title)}</h3>
+              <span className={`goal-status status-${goal.status}`}>{text.goals.status[goal.status]}</span>
+              {goal.overdue && <Tag tone="warm">{text.goals.daysLate(goal.daysLate)}</Tag>}
+              {goal.orphaned && <Tag tone="warm">{text.goals.orphaned}</Tag>}
+            </div>
+            {goal.sessions.length === 0 ? (
+              <p className="muted">{text.progress.noSessions}</p>
+            ) : (
+              <ul className="session-list">
+                {goal.sessions.map((s) => (
+                  <li key={s.id}>
+                    <span>{text.progress.session(s.startedAt, s.endedAt === null)}</span>
+                    {s.attempts.map((a) => (
+                      <span key={a.number} className={a.passed ? "attempt attempt-passed" : "attempt"}>
+                        {text.progress.attempt(a.number, a.correct, a.total, a.passed)}
+                      </span>
+                    ))}
+                    <Button kind="quiet" onClick={() => void read(s.id)}>
+                      {text.progress.readTranscript}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             )}
-          </p>
-          <ul>
-            {progress.map((goal) => (
-              <li key={goal.id}>
-                {text.goals.goal(goal.subjectName, text.goalTitle(goal.kind, goal.title), goal.targetDate)}
-                {text.goals.status[goal.status] && ` · ${text.goals.status[goal.status]}`}
-                {goal.overdue && <span className="overdue"> · {text.goals.overdue}</span>}
-                {goal.orphaned && <span className="overdue"> · {text.goals.orphaned}</span>}
-                <ul>
-                  {goal.sessions.length === 0 && <li className="hint">{text.progress.noSessions}</li>}
-                  {goal.sessions.map((s) => (
-                    <li key={s.id}>
-                      {text.progress.session(s.startedAt, s.endedAt === null)}{" "}
-                      <button type="button" className="link" onClick={() => void read(s.id)}>
-                        {text.progress.readTranscript}
-                      </button>
-                      {s.attempts.map((a) => (
-                        <div key={a.number} className="hint">
-                          {text.progress.attempt(a.number, a.correct, a.total, a.passed)}
-                        </div>
-                      ))}
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-          {transcript && <Transcript transcript={transcript} onClose={() => setTranscript(undefined)} />}
-        </div>
-      )}
+          </li>
+        ))}
+      </ul>
     </>
   );
 }
 
-/** One Session as the Parent reads it: every message, then each Quiz attempt's questions and answers. */
-function Transcript({ transcript, onClose }: { transcript: SessionTranscript; onClose: () => void }) {
+/** One Session as the Parent reads it: every message, drawn as in the Session itself, then each Quiz attempt's questions and answers. */
+function Transcript({ transcript, learnerName, onClose }: { transcript: SessionTranscript; learnerName: string; onClose: () => void }) {
   return (
-    <section className="card">
-      <p className="subject">{transcript.subjectName}</p>
-      <h4>{text.goalTitle(transcript.kind, transcript.title)}</h4>
-      <p className="hint">{text.progress.session(transcript.startedAt, transcript.endedAt === null)}</p>
-      {transcript.messages.length === 0 && <p className="hint">{text.progress.noMessages}</p>}
-      <ol className="transcript">
-        {transcript.messages.map((m, i) => (
-          <li key={i} className={m.role}>
-            <span className="speaker">{m.role === "tutor" ? text.session.tutor : text.session.you}</span>
-            {m.role === "tutor" ? <MathText text={m.content} /> : m.content}
-          </li>
-        ))}
-      </ol>
+    <section className="transcript-view" aria-label={text.progress.transcriptLabel}>
+      <Button kind="quiet" onClick={onClose}>
+        <BackIcon size={18} /> {text.progress.closeTranscript}
+      </Button>
+      <div>
+        <span className="eyebrow">{transcript.subjectName}</span>
+        <h2 className="h2">{text.goalTitle(transcript.kind, transcript.title)}</h2>
+        <p className="muted">{text.progress.session(transcript.startedAt, transcript.endedAt === null)}</p>
+      </div>
+      <Card>
+        {transcript.messages.length === 0 && <p className="muted">{text.progress.noMessages}</p>}
+        <ol className="transcript">
+          {transcript.messages.map((m, i) =>
+            m.role === "tutor" ? (
+              <li key={i} className="tutor-reply">
+                <div className="tutor-header">
+                  <TutorMark size={24} /> {text.session.tutor}
+                </div>
+                <div className="tutor-text">
+                  <MathText text={m.content} />
+                </div>
+              </li>
+            ) : (
+              <li key={i} className="learner-note">
+                <span className="visually-hidden">{learnerName}: </span>
+                {m.content}
+              </li>
+            ),
+          )}
+        </ol>
+      </Card>
       {transcript.attempts.map((a) => (
-        <div key={a.number}>
-          <h5>{text.progress.quizHeading(a.number)}</h5>
-          {a.score && <p>{text.quiz.score(a.score.correct, a.score.total)}</p>}
-          <ol>
+        <Card key={a.number} className="transcript-quiz">
+          <h3 className="h3">{text.progress.quizHeading(a.number)}</h3>
+          {a.score && <p className="muted">{text.quiz.score(a.score.correct, a.score.total)}</p>}
+          <ol className="transcript-questions">
             {a.questions.map((q, i) => (
               <li key={i}>
                 <MathText text={text.progress.question(i + 1, q.prompt)} />
-                <div className="hint">{text.progress.answer(q.answer, q.correct, q.answerKey)}</div>
+                <div className={q.correct === false ? "text-warm" : "muted"}>{text.progress.answer(q.answer, q.correct, q.answerKey)}</div>
               </li>
             ))}
           </ol>
-        </div>
+        </Card>
       ))}
-      <button type="button" onClick={onClose}>
-        {text.progress.closeTranscript}
-      </button>
     </section>
   );
 }

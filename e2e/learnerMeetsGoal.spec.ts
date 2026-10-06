@@ -26,18 +26,18 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   await page.getByRole("button", { name: "Set password" }).click();
 
   // …adds a Learner…
-  await expect(page.getByRole("heading", { name: "Parent area" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add a Learner" })).toBeVisible();
   await page.getByRole("textbox", { name: "Name" }).fill("Ada");
   await page.getByRole("textbox", { name: "Grade" }).fill("6");
   await page.getByRole("button", { name: "Add Learner" }).click();
-  const ada = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Ada" }) });
-  await expect(ada).toBeVisible();
+  const ada = page.getByRole("main");
+  await expect(ada.getByRole("heading", { name: "Ada" })).toBeVisible();
 
   // …and a Goal: the first Lesson of the fixture Curriculum.
   await ada.getByRole("combobox", { name: "Lesson" }).selectOption({ label: "Ratios · Understanding ratios" });
   await ada.getByLabel("Target Date", { exact: true }).fill(daysFromNow(30));
   await ada.getByRole("button", { name: "Set Goal" }).click();
-  await expect(ada.getByText(/Math: Understanding ratios, by/)).toBeVisible();
+  await expect(ada.getByRole("row").filter({ hasText: "Understanding ratios" })).toContainText("Active");
   await page.getByRole("button", { name: "Log out" }).click();
 
   // The Learner picks their profile and starts the Goal.

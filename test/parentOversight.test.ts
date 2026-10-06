@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Goal, GoalCard, GoalProgress, SessionTranscript } from "../src/shared/api";
+import type { Goal, GoalCard, GoalProgress, Learner, SessionTranscript } from "../src/shared/api";
 import { validCurriculum } from "./support/curriculumFixture";
 import { household, ratios } from "./support/household";
 import { goalCards } from "./support/today";
@@ -127,6 +127,27 @@ describe("The Parent's progress view", () => {
   it("answers 404 for an unknown Learner", async () => {
     const { parent } = await oversight();
     expect((await parent("/api/parent/learners/999/progress")).status).toBe(404);
+  });
+});
+
+describe("Goals needing attention", () => {
+  it("counts each Learner's overdue and Flagged Goals in the Learner list, each Goal once", async () => {
+    const { parent, ada, goalId, setGoal, flagGoal, goalAction } = await oversight();
+    const needsAttention = async () => ((await (await parent("/api/parent/learners")).json()) as Learner[]).find((l) => l.id === ada)!.needsAttention;
+    const setTargetDate = (id: number, targetDate: string) => parent(`/api/parent/learners/${ada}/goals/${id}`, { targetDate }, "PATCH");
+    const later = await setGoal(dividingFractions, "2026-10-20");
+    expect(await needsAttention()).toBe(0);
+
+    await setTargetDate(goalId, "2026-10-01");
+    expect(await needsAttention()).toBe(1);
+    // Overdue and Flagged, still one Goal.
+    await flagGoal();
+    expect(await needsAttention()).toBe(1);
+    await setTargetDate(later.id, "2026-10-01");
+    expect(await needsAttention()).toBe(2);
+    // A skipped Goal needs nothing more, overdue or not.
+    await goalAction(later.id, "skip");
+    expect(await needsAttention()).toBe(1);
   });
 });
 

@@ -95,6 +95,13 @@
   --m-pulse: 1.6s;
   --ease-bounce: cubic-bezier(0.3, 1.6, 0.6, 1);
 
-  /* Touch: the smallest control anywhere. */
+  /* Touch: the smallest control anywhere on the Learner side. */
   --touch: 44px;
+
+  /* The Parent's denser variant (.dense): smaller type and tighter controls, for a laptop more than fingers. */
+  --t-dense: 15px;
+  --t-dense-small: 13px;
+  --dense-control: 36px;
+  --dense-field: 40px;
+  --dense-sidebar: 240px;
 }

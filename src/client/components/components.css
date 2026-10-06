@@ -333,3 +333,70 @@
   font-weight: 800;
   font-family: var(--font);
 }
+
+/* Wordmark with a label beside it in the top bar (the Parent area's) */
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* Segmented: a few choices side by side, one of them on */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--line);
+  border-radius: var(--r-btn);
+}
+.segmented button {
+  min-height: var(--touch);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--s-2);
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shape);
+}
+.segmented button:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 1px;
+}
+
+/*
+ * The denser variant of the shared components, for the Parent area (#24): the same look, with smaller type and tighter
+ * controls. Anything inside .dense takes it.
+ */
+.dense {
+  font-size: var(--t-dense);
+}
+.dense .btn {
+  min-height: var(--dense-control);
+  padding: 0 var(--s-3);
+  font-size: var(--t-small);
+}
+.dense .btn-quiet {
+  padding: 0 var(--s-2);
+}
+.dense .field-label {
+  font-size: var(--t-small);
+}
+.dense .field-hint {
+  font-size: var(--t-dense-small);
+}
+.dense .field :is(input, select, textarea) {
+  min-height: var(--dense-field);
+  padding: 0 var(--s-3);
+  font-size: var(--t-dense);
+  border-radius: var(--r-btn);
+}
+.dense :is(.top-nav, .segmented) button {
+  min-height: var(--dense-control);
+}
+.dense .tutor-text {
+  font-size: var(--t-dense);
+}
