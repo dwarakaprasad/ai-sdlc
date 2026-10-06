@@ -30,3 +30,12 @@ The quiz is live: pick, Check, Continue through all three questions to the score
 | Tutor | owl: Ollie / Pip / Juno | orb mark: Atlas / Nova / Sage | robot: Orbit / Pico / Kit |
 
 Social Studies and Science are invented so every home-card state shows at once (overdue, normal, Unit Test, with your Parent).
+
+## Verdict (2026-10-06)
+
+**Direction B, Studio, as a whole.** It's the one a 12-year-old won't cringe at, and it still gives a 9-year-old colour, progress and feedback.
+The Tutor ships as **Jarvis**, drawn as B's dark rounded mark with pill eyes and a yellow corner. In the domain and in code it stays the "Tutor".
+A and C stay on this branch as reference only.
+
+The real build follows the agreed approach: plain CSS with design tokens and a few shared components, built properly with tests, not copied from here.
+Screens to rebuild from B: the profile picker, the Avatar pick, Today (the home screen), the Learning Path, the Session chat, the Quiz with its score screen, Goal met, and the Parent Goals list.
