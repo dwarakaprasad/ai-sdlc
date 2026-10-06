@@ -25,6 +25,17 @@ function formatDate(date: string): string {
   return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+/**
+ * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
+ * "math/term-1/unit-2" as "U1.2"; any other key (an Orphaned Goal's, say) as it is.
+ */
+function shortKey(key: string): string {
+  const numbers = key.match(/^[^/]+\/term-(\d+)\/unit-(\d+)(?:\/lesson-(\d+))?$/);
+  if (!numbers) return key;
+  const [, term, unit, lesson] = numbers;
+  return lesson ? `${term}.${unit}.${lesson}` : `U${term}.${unit}`;
+}
+
 /** All UI text, in one place for later translation (English only in v1). */
 export const text = {
   appName: "Home Tutor",
@@ -235,15 +246,25 @@ export const text = {
   goals: {
     heading: "Goals",
     none: "No Goals yet. Set one below.",
-    goal: (subjectName: string, title: string, targetDate: string) => `${subjectName}: ${title}, by ${formatDate(targetDate)}`,
-    /** Shown after a Goal's details; an active Goal needs no label. */
-    status: { active: undefined, met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string | undefined>,
-    overdue: "Overdue",
+    noneNeedAttention: "Nothing needs your attention.",
+    filterLabel: "Which Goals",
+    filterAll: "All",
+    filterAttention: (count: number) => `Needs attention · ${count}`,
+    columns: { lesson: "Lesson", goal: "Goal", target: "Target", status: "Status", actions: "Actions" },
+    shortKey,
+    targetDate: formatDate,
+    daysOverdue: (days: number) => `${days} ${days === 1 ? "day" : "days"} overdue`,
+    status: { active: "Active", met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string>,
     orphaned: "Lesson no longer in the Curriculum",
+    review: "Review",
+    change: "Change",
+    flaggedHint: `${TUTOR_NAME} handed this Goal back to you. Retry it for a fresh Session, mark it met if you taught it yourself, or skip it.`,
+    addHeading: "Set a Goal",
     orphanedHint: "This Goal's Lesson was renumbered or removed. Re-point it to a Lesson, or remove it. Until then the Learner sees this Subject is with you, with nothing to start.",
     retry: "Retry",
     markMet: "Mark met",
     repointLabel: (title: string) => `New Lesson for ${title}`,
+    repointOption: (subjectName: string, unitTitle: string, title: string) => `${subjectName} · ${unitTitle} · ${title}`,
     repoint: "Re-point",
     remove: "Remove",
     confirmRemove: (title: string) => `Remove the Goal "${title}"? Its Sessions and transcripts will be deleted too.`,
@@ -284,12 +305,18 @@ export const text = {
   parentArea: {
     heading: "Parent area",
     logout: "Log out",
+    nav: { learners: "Learners", curricula: "Curricula", settings: "Settings", usage: "Usage" },
   },
   learners: {
     heading: "Learners",
     none: "No Learners yet. Add one below.",
     details: (grade: string, curriculumId: string, hasPin: boolean) =>
       `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""}`,
+    grade: (grade: string) => `Grade ${grade}`,
+    needsAttention: (count: number) => `${count} ${count === 1 ? "Goal needs" : "Goals need"} attention`,
+    views: { goals: "Goals", progress: "Progress" },
+    viewsLabel: "Learner views",
+    removeLearner: (name: string) => `Remove ${name}`,
     addHeading: "Add a Learner",
     editHeading: (name: string) => `Edit ${name}`,
     nameLabel: "Name",
@@ -342,11 +369,11 @@ export const text = {
     } satisfies Record<LlmErrorKind, (envVar: string, model: string) => string>,
   },
   progress: {
-    show: "Show progress",
-    hide: "Hide progress",
-    summary: (met: number, overdue: number, flagged: number, orphaned: number) =>
-      `${met} met · ${overdue} overdue · ${flagged} flagged · ${orphaned} with a missing Lesson`,
+    summary: { met: "Met", overdue: "Overdue", flagged: "Flagged", orphaned: "Missing Lesson" },
+    summaryLabel: "Goals at a glance",
+    noGoals: "No Goals yet, so no progress to show.",
     noSessions: "No Sessions yet.",
+    transcriptLabel: "Transcript",
     session: (startedAt: string, open: boolean) => `Session on ${new Date(startedAt).toLocaleString()}${open ? " (open)" : ""}`,
     attempt: (number: number, correct: number, total: number, passed: boolean) =>
       `Quiz ${number}: ${correct} out of ${total}${passed ? " (passed)" : ""}`,

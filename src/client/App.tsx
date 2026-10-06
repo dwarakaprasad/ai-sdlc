@@ -36,7 +36,7 @@ export function App() {
   else if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} onSwitchProfile={refresh} />;
   else if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
   else if (!state.parent.passwordSet) content = <SetupForm onDone={refresh} />;
-  else if (state.parent.loggedIn) content = <ParentArea onLogout={refresh} />;
+  else if (state.parent.loggedIn) return <ParentArea onLogout={refresh} />;
   else if (parentLogin) content = <LoginForm onDone={refresh} onBack={() => setParentLogin(false)} />;
   else return <LearnerLogin onDone={refresh} onParent={() => setParentLogin(true)} />;
   return <main className="legacy">{content}</main>;

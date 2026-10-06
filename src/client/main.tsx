@@ -8,6 +8,7 @@ import "./styles/base.css";
 import "./components/components.css";
 import "./learner/learner.css";
 import "./learner/session.css";
+import "./parent/parent.css";
 import "./styles/legacy.css";
 import { text } from "./text";
 

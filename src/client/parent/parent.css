@@ -1,0 +1,429 @@
+/* The Parent screens that follow prototype B in its denser variant: Learners, Goals, progress and transcripts. Tokens only. */
+
+.parent-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.parent-page {
+  padding: var(--s-6) var(--s-7);
+}
+
+/* Learners: the list beside the one picked */
+.parent-layout {
+  display: grid;
+  flex: 1;
+  grid-template-columns: var(--dense-sidebar) minmax(0, 1fr);
+}
+.learner-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  background: var(--card);
+  border-right: 1px solid var(--line);
+}
+.learner-list .eyebrow {
+  padding: 0 var(--s-2);
+}
+.learner-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.learner-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: var(--touch);
+  padding: var(--s-2);
+  border: 0;
+  border-radius: var(--r-btn);
+  background: none;
+  text-align: left;
+}
+.learner-pick:hover {
+  background: var(--paper);
+}
+.learner-pick[aria-current="page"] {
+  background: var(--paper);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+.learner-pick:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 1px;
+}
+.learner-pick-name {
+  flex: 1;
+  min-width: 0;
+}
+.learner-pick-name b {
+  display: block;
+  color: var(--ink);
+}
+.learner-pick-name small {
+  color: var(--muted);
+}
+.attention-count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 var(--s-1);
+  border-radius: var(--r-pill);
+  background: var(--warm);
+  color: var(--on-ink);
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+}
+.parent-main {
+  min-width: 0;
+  padding: var(--s-6) var(--s-7) var(--s-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+/* One Learner: who they are, and the views */
+.parent-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+}
+.parent-head-title {
+  flex: 1;
+  min-width: 0;
+}
+.view-tabs {
+  display: flex;
+  gap: var(--s-1);
+  border-bottom: 1px solid var(--line);
+}
+.view-tabs button {
+  min-height: var(--dense-control);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.view-tabs button[aria-current="page"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.view-tabs button:focus-visible {
+  outline: 3px solid var(--yellow);
+}
+
+/* Goals: a table grouped by Subject, scrolling sideways on its own if the screen is too narrow */
+.goal-table-wrap {
+  position: relative;
+  overflow-x: auto;
+}
+.goals-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.goals-toolbar h2 {
+  flex: 1;
+}
+.goals-empty {
+  margin: 0;
+}
+.goal-table {
+  width: 100%;
+  min-width: 34rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.goal-table thead th {
+  text-align: left;
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: var(--s-2) var(--s-4);
+}
+.goal-table thead th:first-child {
+  width: 80px;
+}
+.goal-table thead th:nth-child(3) {
+  width: 200px;
+}
+.goal-table thead th:nth-child(4) {
+  width: 110px;
+}
+.goal-table thead th:last-child {
+  width: 110px;
+}
+.goal-table td {
+  padding: var(--s-1) var(--s-4);
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+.goal-group th {
+  text-align: left;
+  padding: var(--s-1) var(--s-4);
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  font-size: var(--t-dense-small);
+  font-weight: 800;
+  color: var(--muted);
+}
+.goal-key {
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.goal-overdue {
+  color: var(--warm);
+  font-weight: 700;
+}
+.goal-row:is(.goal-row-met, .goal-row-skipped) td {
+  color: var(--muted);
+}
+.goal-act {
+  text-align: right;
+}
+.goal-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--t-dense-small);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.goal-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.status-active::before {
+  background: var(--ink);
+}
+.status-met::before {
+  background: var(--green);
+}
+.status-flagged {
+  color: var(--lilac);
+}
+.status-flagged::before {
+  background: var(--lilac);
+}
+.goal-detail td {
+  border-top: 0;
+  background: var(--paper);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+}
+.goal-actions,
+.orphaned {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.goal-actions p,
+.orphaned p {
+  margin: 0;
+}
+.goal-actions-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+/* Setting Goals, and the Learner form */
+.goal-forms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  align-items: start;
+}
+.goal-forms form,
+.learner-form form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.goal-forms p {
+  margin: 0;
+  font-size: var(--t-small);
+}
+.learner-form {
+  max-width: 40rem;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3) var(--s-4);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--dense-control);
+  font-weight: 700;
+  color: var(--ink);
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+.form-remove {
+  margin-left: auto;
+}
+.form-remove:hover {
+  color: var(--warm);
+}
+
+/* Progress */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s-3);
+  margin: 0;
+}
+.stat {
+  padding: var(--s-3) var(--s-4);
+}
+.stat dd {
+  margin: 0;
+  font-size: var(--t-h2);
+  font-weight: 800;
+  color: var(--ink);
+}
+.stat-met dd {
+  color: var(--green);
+}
+.stat-overdue dd,
+.stat-orphaned dd {
+  color: var(--warm);
+}
+.stat-flagged dd {
+  color: var(--lilac);
+}
+.progress-goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.progress-goal {
+  padding: var(--s-3) var(--s-4);
+}
+.progress-goal > p {
+  margin: var(--s-1) 0 0;
+}
+.progress-goal-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+.session-list {
+  list-style: none;
+  margin: var(--s-2) 0 0;
+  padding: 0;
+}
+.session-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-1);
+  font-size: var(--t-small);
+}
+.session-list .btn-quiet {
+  margin-left: auto;
+}
+.attempt {
+  color: var(--muted);
+}
+.attempt-passed {
+  color: var(--green-ink);
+  font-weight: 700;
+}
+
+/* A transcript: drawn as in the Session */
+.transcript-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-width: 48rem;
+}
+.transcript-view > .btn-quiet {
+  align-self: flex-start;
+}
+.transcript-view p {
+  margin: 0;
+}
+.transcript-view .transcript {
+  gap: var(--s-4);
+}
+.transcript-questions {
+  margin: var(--s-2) 0 0;
+  padding-left: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+@media (max-width: 1000px) {
+  .parent-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .learner-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .learner-list ul {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .learner-pick {
+    width: auto;
+  }
+}
+@media (max-width: 760px) {
+  .parent-main,
+  .parent-page {
+    padding: var(--s-4);
+  }
+  .stat-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .goal-forms,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .top-bar .tag {
+    display: none;
+  }
+  .parent-app .top-nav {
+    min-width: 0;
+    overflow-x: auto;
+  }
+}

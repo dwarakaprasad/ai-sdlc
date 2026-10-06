@@ -6,6 +6,7 @@ import {
   ACCENT_COLORS,
   isAccentColor,
   isAvatarId,
+  needsAttention,
   type AccentColor,
   type AvatarChoice,
   type Learner,
@@ -15,6 +16,7 @@ import {
 } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, hashPassword } from "./auth";
+import { goalsOf } from "./goals";
 import { parseId, readJsonObject } from "./http";
 import type { Db } from "./db";
 import { learners } from "./db/schema";
@@ -77,7 +79,9 @@ function nextColor(db: Db): AccentColor {
 }
 
 /** The Parent's Learner management, mounted under the Parent's protected routes. */
-export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
+export function parentLearnerRoutes(deps: AppDeps) {
+  const { db, curriculaDir } = deps;
+  const toLearner = (row: LearnerRow) => learnerAsParentSees(deps, row);
   const isValidCurriculum = (id: string) => loadCurricula(curriculaDir).some((r) => r.ok && r.id === id);
   return new Hono()
     .get("/", (c) => c.json(allLearners(db).map(toLearner)))
@@ -121,9 +125,10 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
     });
 }
 
-function toLearner(row: LearnerRow): Learner {
+function learnerAsParentSees(deps: AppDeps, row: LearnerRow): Learner {
   const { id, name, grade, curriculumId } = row;
-  return { id, name, grade, curriculumId, hasPin: hasPin(row), ...avatarOf(row) };
+  const attention = goalsOf(deps, row).filter(needsAttention).length;
+  return { id, name, grade, curriculumId, hasPin: hasPin(row), needsAttention: attention, ...avatarOf(row) };
 }
 
 type LearnerInputError = {

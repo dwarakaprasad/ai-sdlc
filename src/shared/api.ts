@@ -40,8 +40,11 @@ export type AccentColor = (typeof ACCENT_COLORS)[number];
 /** A Learner's Avatar and its colour; no picture until the Learner's first pick. */
 export type AvatarChoice = { avatar: AvatarId | null; color: AccentColor };
 
-/** A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. */
-export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean } & AvatarChoice;
+/**
+ * A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. `needsAttention` counts the
+ * Learner's Goals that need the Parent (see needsAttention), worked out on each request.
+ */
+export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean; needsAttention: number } & AvatarChoice;
 
 /**
  * Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it;
@@ -87,12 +90,17 @@ export type Goal = {
   targetDate: string;
   status: GoalStatus;
   overdue: boolean;
+  /** How many days past its Target Date an overdue Goal is; 0 when it isn't overdue. */
+  daysOverdue: number;
   /**
    * Its Lesson (or Unit) is gone from the Learner's Curriculum, say after a renumbering, so its title falls back to its key.
    * The Parent re-points or removes it; until then the Learner sees its Subject is with the Parent, with nothing to start. Never set while the Curriculum is invalid.
    */
   orphaned: boolean;
 };
+
+/** Whether a Goal needs the Parent's attention: it is overdue, or a Flagged Goal (or both, counted once). */
+export const needsAttention = (goal: Pick<Goal, "overdue" | "status">): boolean => goal.overdue || goal.status === "flagged";
 
 /** One Session in the progress view: when it ran, where it got to, and the score of each finished Quiz attempt. Times are ISO 8601. */
 export type SessionSummary = {
