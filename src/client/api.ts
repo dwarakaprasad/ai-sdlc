@@ -6,6 +6,7 @@ import type {
   Goal,
   GoalCard,
   GoalInput,
+  GoalOrder,
   Learner,
   LearnerInput,
   LessonOption,
@@ -13,6 +14,7 @@ import type {
   LoggedInLearner,
   LearnerProfile,
   ParentStatus,
+  SpreadInput,
   TeachingSettings,
   TurnEvents,
   TutorSession,
@@ -24,7 +26,7 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-async function send(path: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<Response> {
+async function send(path: string, method: "POST" | "PUT" | "PATCH" | "DELETE", body?: unknown): Promise<Response> {
   return fetch(path, {
     method,
     headers: body === undefined ? undefined : { "content-type": "application/json" },
@@ -47,6 +49,11 @@ export const api = {
   lessons: (learnerId: number) => get<LessonOption[]>(`/api/parent/learners/${learnerId}/lessons`),
   goals: (learnerId: number) => get<Goal[]>(`/api/parent/learners/${learnerId}/goals`),
   createGoal: (learnerId: number, input: GoalInput) => post(`/api/parent/learners/${learnerId}/goals`, input),
+  spreadTargetDates: (learnerId: number, input: SpreadInput) => post(`/api/parent/learners/${learnerId}/goals/spread`, input),
+  editTargetDate: (learnerId: number, goalId: number, targetDate: string) =>
+    send(`/api/parent/learners/${learnerId}/goals/${goalId}`, "PATCH", { targetDate }),
+  reorderGoals: (learnerId: number, order: GoalOrder) => send(`/api/parent/learners/${learnerId}/goals/order`, "PUT", order),
+  skipGoal: (learnerId: number, goalId: number) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/skip`, {}),
   llmSettings: () => get<LlmSettings>("/api/parent/settings/llm"),
   saveLlmSettings: (settings: LlmSettings) => send("/api/parent/settings/llm", "PUT", settings),
   testConnection: async () => (await post("/api/parent/settings/llm/test", {})).json() as Promise<ConnectionTest>,

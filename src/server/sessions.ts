@@ -76,6 +76,8 @@ export function learnerSessionRoutes(deps: AppDeps) {
       const found = sessionOf(db, learner, parseId(c.req.param("id")));
       if (!found) return c.json({ error: "sessionNotFound" }, 404);
       const { session, goal } = found;
+      // The Parent may have skipped the Goal while its Session was open.
+      if (goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
       const { message } = (await readJsonObject(c)) ?? {};
       // The Tutor starts the Explanation and the re-teaching itself, so a message sent then is neither answered nor kept.
       const learnerMessage =
@@ -144,6 +146,8 @@ export function learnerSessionRoutes(deps: AppDeps) {
       const found = sessionOf(db, learner, parseId(c.req.param("id")));
       if (!found) return c.json({ error: "sessionNotFound" }, 404);
       const { session, goal } = found;
+      // The Parent may have skipped the Goal while its Session was open.
+      if (goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
       if (session.step !== "ready-for-quiz") return c.json({ error: "noQuizNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
@@ -187,6 +191,8 @@ export function learnerSessionRoutes(deps: AppDeps) {
       const found = sessionOf(db, learner, parseId(c.req.param("id")));
       if (!found) return c.json({ error: "sessionNotFound" }, 404);
       const { session, goal } = found;
+      // The Parent may have skipped the Goal while its Session was open.
+      if (goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
       if (session.step !== "quiz") return c.json({ error: "noQuizNow" }, 409);
       const attempt = latestAttempt(db, session.id);
       const question = questionsOf(db, attempt?.id).find((q) => q.answer === null);

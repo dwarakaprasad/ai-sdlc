@@ -64,6 +64,16 @@ _Avoid_: Task, assignment, objective
 The date by which the Parent wants a Goal met.
 _Avoid_: Deadline, due date
 
+**Goal queue**:
+A Learner's Goals for one Subject in the order they'll be worked on; the first not yet met or skipped is the current Goal. The Parent can reorder it, insert into it, or skip a Goal in it.
+_Avoid_: List, backlog
+
+**Skipped Goal**:
+A Goal the Parent has set aside without it being met; the Learner moves on to the next Goal in the queue.
+
+**Term end date**:
+The date a Term finishes, which the Parent enters to have Target Dates spread evenly across the Term's Goals still to be met.
+
 **Overdue**:
 A Goal whose Target Date has passed and that is not yet met; worked out when shown, never stored, and it changes nothing by itself. The Learner sees it gently ("let's catch up").
 _Avoid_: Late, missed
