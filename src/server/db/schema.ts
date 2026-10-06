@@ -49,3 +49,26 @@ export const llmUsage = sqliteTable("llm_usage", {
   outputTokens: integer("output_tokens").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });
+
+export const goalKinds = ["lesson", "unit-test"] as const;
+export const goalStatuses = ["active", "met", "flagged", "skipped"] as const;
+
+/**
+ * A Learner's Goal: master one Lesson, or pass one Unit Test, by a Target Date.
+ * Overdue is worked out from the Target Date when needed, never stored.
+ */
+export const goals = sqliteTable("goals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  learnerId: integer("learner_id")
+    .notNull()
+    .references(() => learners.id, { onDelete: "cascade" }),
+  subjectKey: text("subject_key").notNull(),
+  /** The Lesson key for a lesson Goal, the Unit key for a unit-test Goal; may no longer exist after a Curriculum edit. */
+  curriculumKey: text("curriculum_key").notNull(),
+  kind: text("kind", { enum: goalKinds }).notNull(),
+  /** Place in the Learner's queue for this Subject; lowest first. */
+  position: integer("position").notNull(),
+  /** YYYY-MM-DD. */
+  targetDate: text("target_date").notNull(),
+  status: text("status", { enum: goalStatuses }).notNull(),
+});

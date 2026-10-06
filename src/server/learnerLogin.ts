@@ -1,19 +1,32 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { LearnerProfile, LoggedInLearner } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, endLogin, requireRole, startLogin, verifyPassword } from "./auth";
+import { currentGoals } from "./goals";
 import { readJsonObject } from "./http";
 import { allLearners, findLearner, hasPin } from "./learners";
 
 /** The Learner login screen and the logged-in Learner's own routes. */
-export function learnerRoutes({ db }: AppDeps) {
-  const protectedRoutes = new Hono().use(requireRole(db, "learner")).get("/me", (c) => {
+export function learnerRoutes(deps: AppDeps) {
+  const { db } = deps;
+  const loggedInLearner = (c: Context) => {
     const learnerId = currentLogin(c, db)?.learnerId;
-    const learner = learnerId == null ? undefined : findLearner(db, learnerId);
-    if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-    const me: LoggedInLearner = { id: learner.id, name: learner.name };
-    return c.json(me);
-  });
+    return learnerId == null ? undefined : findLearner(db, learnerId);
+  };
+
+  const protectedRoutes = new Hono()
+    .use(requireRole(db, "learner"))
+    .get("/me", (c) => {
+      const learner = loggedInLearner(c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const me: LoggedInLearner = { id: learner.id, name: learner.name };
+      return c.json(me);
+    })
+    .get("/goals", (c) => {
+      const learner = loggedInLearner(c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      return c.json(currentGoals(deps, learner));
+    });
 
   return new Hono()
     .get("/profiles", (c) =>

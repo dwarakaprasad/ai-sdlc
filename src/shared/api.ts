@@ -32,3 +32,32 @@ export type ConnectionTest = { ok: true } | { ok: false; error: LlmErrorKind; en
 
 /** One day of GET /api/parent/usage (most recent day first). */
 export type DailyUsage = { date: string; calls: number; inputTokens: number; outputTokens: number };
+
+export type GoalKind = "lesson" | "unit-test";
+export type GoalStatus = "active" | "met" | "flagged" | "skipped";
+
+/**
+ * A Goal as the Parent sees it (GET /api/parent/learners/:id/goals), in queue order per Subject.
+ * `lessonKey` is the Unit key for a unit-test Goal. `overdue` is worked out on each request.
+ */
+export type Goal = {
+  id: number;
+  subjectKey: string;
+  subjectName: string;
+  lessonKey: string;
+  kind: GoalKind;
+  title: string;
+  /** YYYY-MM-DD. */
+  targetDate: string;
+  status: GoalStatus;
+  overdue: boolean;
+};
+
+/** A Lesson a Goal can be set from (GET /api/parent/learners/:id/lessons), in Curriculum order. */
+export type LessonOption = { key: string; subjectName: string; unitTitle: string; title: string };
+
+/** Body of POST /api/parent/learners/:id/goals. */
+export type GoalInput = { lessonKey: string; targetDate: string };
+
+/** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. */
+export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" | "overdue">;
