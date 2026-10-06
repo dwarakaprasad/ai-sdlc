@@ -1,5 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import type { GoalStatus } from "../shared/api";
+import { MAX_RE_EXPLANATIONS_LIMIT, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
@@ -69,7 +69,7 @@ export const text = {
     hint: "When the Tutor has re-explained this many times and the Learner still doesn't understand, the Goal is handed back to you as a Flagged Goal.",
     save: "Save",
     saved: "Saved.",
-    invalid: "Enter a whole number from 0 to 10.",
+    invalid: `Enter a whole number from 0 to ${MAX_RE_EXPLANATIONS_LIMIT}.`,
   },
   goals: {
     heading: "Goals",

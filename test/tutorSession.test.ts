@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { GUARDRAILS } from "../src/tutor";
 import { inFolder, validCurriculum, writeFixture } from "./support/curriculumFixture";
 import { readSse } from "./support/sse";
 import { createTestApp } from "./support/testApp";
@@ -76,9 +77,7 @@ describe("Starting a Tutor Session", () => {
     expect(system).toContain('Use ratio language such as "for every".');
     expect(system).toContain("Use tape diagrams to show ratios.");
     expect(system).toMatch(/grade 6/i);
-    expect(system).toMatch(/stay on this lesson/i);
-    expect(system).toMatch(/age-appropriate/i);
-    expect(system).toMatch(/never ask for personal information/i);
+    expect(system).toContain(GUARDRAILS);
   });
 });
 

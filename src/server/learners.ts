@@ -5,7 +5,7 @@ import { PIN_PATTERN } from "../shared/auth";
 import type { Learner, LearnerInput } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, hashPassword } from "./auth";
-import { readJsonObject } from "./http";
+import { parseId, readJsonObject } from "./http";
 import type { Db } from "./db";
 import { learners } from "./db/schema";
 
@@ -28,8 +28,8 @@ export function loggedInLearner(db: Db, c: Context): LearnerRow | undefined {
 
 /** The Learner named by the `:id` path parameter, if it is a number and such a Learner exists. */
 export function learnerFromPath(db: Db, c: Context): LearnerRow | undefined {
-  const id = c.req.param("id") ?? "";
-  return /^\d+$/.test(id) ? findLearner(db, Number(id)) : undefined;
+  const id = parseId(c.req.param("id"));
+  return id === undefined ? undefined : findLearner(db, id);
 }
 
 export function hasPin(learner: LearnerRow): boolean {

@@ -79,11 +79,9 @@ export type SessionMessage = { role: MessageRole; content: string };
 /** A Session as the Learner sees it (POST /api/learner/goals/:id/session): the transcript so far and the current step. */
 export type TutorSession = { id: number; subjectName: string; title: string; step: SessionStep; messages: SessionMessage[] };
 
-/** Body of POST /api/learner/sessions/:id/turn; `message` is absent for the turn that gives the Explanation. */
-export type TurnInput = { message?: string };
-
 /**
- * The Server-Sent Events of POST /api/learner/sessions/:id/turn: `text` pieces of the Tutor's reply as it's generated,
+ * The Server-Sent Events of POST /api/learner/sessions/:id/turn, whose body is `{ message }`
+ * (no message for the turn that gives the Explanation): `text` pieces of the Tutor's reply as it's generated,
  * then either `done` with the Session's next step, or `error`, in which case nothing from the turn is kept.
  * After `llmFailed` the turn can be tried again; after `sessionChanged` another turn moved the Session on first, so reopen it.
  */

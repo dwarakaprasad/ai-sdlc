@@ -7,7 +7,7 @@ import type { AppDeps } from "./deps";
 import type { Db } from "./db";
 import { goals, messages, sessions } from "./db/schema";
 import { lessonOfGoal, type GoalRow } from "./goals";
-import { readJsonObject } from "./http";
+import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
 import { appLlm } from "./llm";
 import { teachingSettings } from "./settings";
@@ -35,7 +35,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
     .post("/goals/:id/session", (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      const goal = goalOf(db, learner, c.req.param("id"));
+      const goal = goalOf(db, learner, parseId(c.req.param("id")));
       if (!goal) return c.json({ error: "goalNotFound" }, 404);
       if (goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
       const lesson = tutorLesson(learner, goal);
@@ -58,7 +58,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
     .post("/sessions/:id/turn", async (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      const found = sessionOf(db, learner, c.req.param("id"));
+      const found = sessionOf(db, learner, parseId(c.req.param("id")));
       if (!found) return c.json({ error: "sessionNotFound" }, 404);
       const { session, goal } = found;
       const { message } = (await readJsonObject(c)) ?? {};
@@ -123,23 +123,23 @@ export function learnerSessionRoutes(deps: AppDeps) {
 }
 
 /** The logged-in Learner's own Goal with id `id`, if there is one. */
-function goalOf(db: Db, learner: LearnerRow, id: string | undefined): GoalRow | undefined {
-  if (!id || !/^\d+$/.test(id)) return undefined;
+function goalOf(db: Db, learner: LearnerRow, id: number | undefined): GoalRow | undefined {
+  if (id === undefined) return undefined;
   return db
     .select()
     .from(goals)
-    .where(and(eq(goals.id, Number(id)), eq(goals.learnerId, learner.id)))
+    .where(and(eq(goals.id, id), eq(goals.learnerId, learner.id)))
     .get();
 }
 
 /** The logged-in Learner's own Session with id `id`, with its Goal. */
-function sessionOf(db: Db, learner: LearnerRow, id: string | undefined): { session: SessionRow; goal: GoalRow } | undefined {
-  if (!id || !/^\d+$/.test(id)) return undefined;
+function sessionOf(db: Db, learner: LearnerRow, id: number | undefined): { session: SessionRow; goal: GoalRow } | undefined {
+  if (id === undefined) return undefined;
   return db
     .select({ session: sessions, goal: goals })
     .from(sessions)
     .innerJoin(goals, eq(sessions.goalId, goals.id))
-    .where(and(eq(sessions.id, Number(id)), eq(goals.learnerId, learner.id)))
+    .where(and(eq(sessions.id, id), eq(goals.learnerId, learner.id)))
     .get();
 }
 

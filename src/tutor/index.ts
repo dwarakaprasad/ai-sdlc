@@ -20,7 +20,7 @@ export type TutorLesson = {
   tutoringInstructions: string | undefined;
 };
 
-export type TurnInput = {
+export type TutorTurnInput = {
   state: TutorState;
   lesson: TutorLesson;
   grade: string;
@@ -55,10 +55,10 @@ export function checkTurn(state: TutorState, learnerMessage: string | undefined)
  * Takes one turn: yields the Tutor's reply as it's generated, and returns the outcome once it's complete.
  * Throws LlmError when a call fails; the caller then keeps nothing from the turn. Call `checkTurn` first.
  */
-export async function* tutorTurn(input: TurnInput, llm: TutorLlm): AsyncGenerator<string, TurnOutcome> {
+export async function* tutorTurn(input: TutorTurnInput, llm: TutorLlm): AsyncGenerator<string, TurnOutcome> {
   const { state, lesson, grade, maxReExplanations } = input;
   const messages = conversation(input);
-  const reply = (task: string) => streamText(llm.chat({ system: tutorInstructions(lesson, grade, task), messages }));
+  const reply = (task: string) => streamText(llm.chat({ system: systemPrompt(lesson, grade, task), messages }));
 
   if (state.step === "explanation") {
     yield* reply(TASKS.explain);
@@ -86,7 +86,7 @@ export async function* tutorTurn(input: TurnInput, llm: TutorLlm): AsyncGenerato
 const KICK_OFF = "Hi! I'm ready to learn.";
 
 /** The transcript as an LLM conversation, ending with the Learner's latest message. */
-function conversation({ transcript, learnerMessage }: TurnInput): ChatMessage[] {
+function conversation({ transcript, learnerMessage }: TutorTurnInput): ChatMessage[] {
   const messages: ChatMessage[] = [{ role: "user", content: KICK_OFF }];
   for (const { role, content } of transcript) messages.push({ role: role === "learner" ? "user" : "assistant", content });
   if (learnerMessage !== undefined) messages.push({ role: "user", content: learnerMessage });
@@ -112,7 +112,10 @@ const TASKS = {
   advance:
     "The Learner has shown they understand. Praise them briefly for something specific they got right, and tell them a short quiz on this Lesson comes next. Don't ask another question.",
   reExplain: (attempt: number) =>
-    `The Learner hasn't understood yet. Explain the Learning Objectives again in a new way: ${APPROACHES[attempt % APPROACHES.length]}. Don't repeat your earlier explanation. Then ask one short question that checks they understood.`,
+    // Past the listed approaches (the Parent may allow more re-explanations), the transcript shows what has been tried.
+    `The Learner hasn't understood yet. Explain the Learning Objectives again in a new way: ${
+      APPROACHES[attempt] ?? "a different approach from every explanation you've given so far in this conversation"
+    }. Don't repeat any earlier explanation. Then ask one short question that checks they understood.`,
   handBack:
     "The Learner is still finding this tricky, so you'll stop here for today and their Parent will help them with it. End kindly: praise their effort, tell them it's fine to find things hard, and that they'll come back to it. Don't explain further or ask a question.",
 };
@@ -129,14 +132,15 @@ function lessonContext(lesson: TutorLesson, grade: string): string {
   return parts.join("\n\n");
 }
 
-const GUARDRAILS = `Rules you always follow:
+/** Always part of the Tutor's instructions: on-Lesson, age-appropriate, and never asking for personal information. */
+export const GUARDRAILS = `Rules you always follow:
 - Stay on this Lesson. If the Learner talks about something else, kindly steer them back to it.
 - Use warm, simple, age-appropriate language for the Learner's grade.
 - Never ask for personal information (such as their full name, address, school, age, contact details or photos), and don't encourage them to share any.
 - Keep replies short: a few short paragraphs at most.
 - Write maths in LaTeX between \\( and \\) inline, or \\[ and \\] on its own line. Never use $ signs around maths.`;
 
-function tutorInstructions(lesson: TutorLesson, grade: string, task: string): string {
+function systemPrompt(lesson: TutorLesson, grade: string, task: string): string {
   return `You are a friendly, patient Tutor teaching one Lesson to a child.\n\n${lessonContext(lesson, grade)}\n\n${GUARDRAILS}\n\nYour task now: ${task}`;
 }
 

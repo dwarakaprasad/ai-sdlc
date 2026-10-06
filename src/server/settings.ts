@@ -37,10 +37,10 @@ export function parentSettingsRoutes(deps: AppDeps) {
     .get("/teaching", (c) => c.json(teachingSettings(db)))
     .put("/teaching", async (c) => {
       const { maxReExplanations } = (await readJsonObject(c)) ?? {};
-      if (!Number.isInteger(maxReExplanations) || (maxReExplanations as number) < 0 || (maxReExplanations as number) > MAX_RE_EXPLANATIONS_LIMIT) {
+      if (typeof maxReExplanations !== "number" || !Number.isInteger(maxReExplanations) || maxReExplanations < 0 || maxReExplanations > MAX_RE_EXPLANATIONS_LIMIT) {
         return c.json({ error: "invalidMaxReExplanations" }, 400);
       }
-      saveSettings(db, { maxReExplanations: maxReExplanations as number });
+      saveSettings(db, { maxReExplanations });
       return c.json(teachingSettings(db));
     })
     .get("/llm", (c) => c.json(llmSettings(db)))
