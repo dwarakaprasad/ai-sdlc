@@ -34,11 +34,32 @@ jobs:
       - run: npm run build
       - run: npm run curriculum:check
 
-  # The one check branch protection requires, so the Node versions above can change without editing the rules.
+  # Whole journeys in a real browser, against the server in end-to-end mode (no API key needed).
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  # The one check branch protection requires, so the jobs above can change without editing the rules.
   ci:
     if: always()
-    needs: check
+    needs: [check, e2e]
     runs-on: ubuntu-latest
     steps:
       - name: Every check passed
-        run: test "${{ needs.check.result }}" = success
+        run: test "${{ needs.check.result }}" = success && test "${{ needs.e2e.result }}" = success
