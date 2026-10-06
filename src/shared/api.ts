@@ -56,7 +56,7 @@ export type Goal = {
 };
 
 /** A Lesson a Goal can be set from (GET /api/parent/learners/:id/lessons), in Curriculum order, with the Term it belongs to. */
-export type LessonOption = { key: string; subjectName: string; termKey: string; termName: string; unitTitle: string; title: string };
+export type LessonOption = { key: string; subjectKey: string; subjectName: string; termKey: string; termName: string; unitTitle: string; title: string };
 
 /**
  * Body of POST /api/parent/learners/:id/goals. The new Goal joins the end of its Subject's queue,
@@ -73,9 +73,6 @@ export type SpreadInput = { termKey: string; termEndDate: string };
 
 /** Body of PUT /api/parent/learners/:id/goals/order: one Subject's whole queue, every Goal once, in its new order. */
 export type GoalOrder = { goalIds: number[] };
-
-/** Body of PATCH /api/parent/learners/:id/goals/:goalId: a new Target Date for that Goal alone. */
-export type TargetDateInput = { targetDate: string };
 
 /** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. */
 export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" | "overdue">;

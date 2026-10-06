@@ -136,6 +136,7 @@ export const text = {
       unknownLesson: "Choose a Lesson from this Learner's Curriculum.",
       invalidTargetDate: "Choose a Target Date.",
       invalidPosition: "Choose a place in the same Subject's queue.",
+      lessonHasGoal: "This Lesson already has a Goal still to be met.",
       unknownTerm: "Choose a Term from this Learner's Curriculum.",
       invalidTermEndDate: "Choose a Term end date.",
       termEndDatePassed: "The Term end date can't be in the past.",

@@ -52,8 +52,8 @@ describe("Goals in the Parent area", () => {
     const { parent, ada } = await household();
 
     const res = await parent(`/api/parent/learners/${ada}/lessons`);
-    const elaTerm = { termKey: "ela/term-1", termName: "Term 1" };
-    const mathTerm = { termKey: "math/term-1", termName: "Term 1" };
+    const elaTerm = { subjectKey: "ela", termKey: "ela/term-1", termName: "Term 1" };
+    const mathTerm = { subjectKey: "math", termKey: "math/term-1", termName: "Term 1" };
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([
@@ -99,6 +99,17 @@ describe("Goals in the Parent area", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error });
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toEqual([]);
+  });
+
+  it("refuses a second Goal for a Lesson that already has one still to be met", async () => {
+    const { setGoal, parentGoals } = await household();
+    await setGoal(ratios, "2026-10-20");
+
+    const res = await setGoal(ratios, "2026-10-25");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "lessonHasGoal" });
+    expect(await parentGoals()).toHaveLength(1);
   });
 
   it("answers Goals for an unknown Learner with not found", async () => {
@@ -368,6 +379,15 @@ describe("Spreading Target Dates from a Term end date", () => {
       { lessonKey: equivalentRatios, targetDate: "2026-10-14" },
       { lessonKey: dividingFractions, targetDate: "2026-10-19" },
     ]);
+  });
+
+  it("can change the current Goal by creating one for an earlier Lesson", async () => {
+    const { setGoal, spread, cardTitles } = await household();
+    await setGoal(dividingFractions, "2026-12-01");
+
+    await spread("math/term-1", "2026-10-15");
+
+    expect(await cardTitles()).toEqual(["Understanding ratios"]);
   });
 
   it("puts every Goal on the end date when the Term ends today", async () => {

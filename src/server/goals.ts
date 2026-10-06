@@ -28,6 +28,7 @@ function lessonsFor(curriculaDir: string, learner: LearnerRow): LessonOption[] {
       term.units.flatMap((unit) =>
         unit.lessons.map((lesson) => ({
           key: lesson.key,
+          subjectKey: subject.key,
           subjectName: subject.name,
           termKey: term.key,
           termName: term.name,
@@ -127,19 +128,16 @@ export function parentGoalRoutes(deps: AppDeps) {
       if (target?.kind !== "lesson" || typeof lessonKey !== "string") return c.json({ error: "unknownLesson" }, 400);
       if (typeof targetDate !== "string" || !isCalendarDate(targetDate)) return c.json({ error: "invalidTargetDate" }, 400);
 
-      // A new Goal joins the end of its Subject's queue, unless the Parent inserts it before one of that Subject's Goals.
       const queue: QueueEntry[] = subjectQueue(db, learner.id, target.subjectKey);
-      const at = beforeGoalId === undefined ? queue.length : queue.findIndex((goal) => "id" in goal && goal.id === beforeGoalId);
-      if (at === -1) return c.json({ error: "invalidPosition" }, 400);
-      queue.splice(at, 0, {
-        learnerId: learner.id,
-        subjectKey: target.subjectKey,
-        curriculumKey: lessonKey,
-        kind: "lesson",
-        targetDate,
-        status: "active",
-      });
-      const row = saveQueue(db, queue)[at]!;
+      // Two Goals for one Lesson would each take a slot when Target Dates are spread.
+      if (queue.some((goal) => goal.kind === "lesson" && goal.curriculumKey === lessonKey && isToBeMet(goal.status))) {
+        return c.json({ error: "lessonHasGoal" }, 409);
+      }
+      // A new Goal joins the end of its Subject's queue, unless the Parent inserts it before one of that Subject's Goals.
+      const place = beforeGoalId === undefined ? queue.length : queue.findIndex((goal) => "id" in goal && goal.id === beforeGoalId);
+      if (place === -1) return c.json({ error: "invalidPosition" }, 400);
+      queue.splice(place, 0, newLessonGoal(learner, target.subjectKey, lessonKey, targetDate));
+      const row = saveQueue(db, queue)[place]!;
       return c.json(toGoal(row, target, localDate(now())), 201);
     })
     .post("/goals/spread", async (c) => {
@@ -148,12 +146,12 @@ export function parentGoalRoutes(deps: AppDeps) {
       const body = await readJsonObject(c);
       if (!body) return c.json({ error: "invalidBody" }, 400);
       const { termKey, termEndDate } = body;
-      const found = typeof termKey === "string" ? termOf(curriculaDir, learner, termKey) : undefined;
-      if (!found) return c.json({ error: "unknownTerm" }, 400);
+      const located = typeof termKey === "string" ? termOf(curriculaDir, learner, termKey) : undefined;
+      if (!located) return c.json({ error: "unknownTerm" }, 400);
       if (typeof termEndDate !== "string" || !isCalendarDate(termEndDate)) return c.json({ error: "invalidTermEndDate" }, 400);
       const today = localDate(now());
       if (termEndDate < today) return c.json({ error: "termEndDatePassed" }, 400);
-      spreadTargetDates(db, learner, found.subject, found.term, today, termEndDate);
+      spreadTargetDates(db, learner, located.subject, located.term, today, termEndDate);
       return c.json(goalsOf(deps, learner));
     })
     .put("/goals/order", async (c) => {
@@ -168,20 +166,22 @@ export function parentGoalRoutes(deps: AppDeps) {
     .patch("/goals/:goalId", async (c) => {
       const found = goalFromPath(db, c);
       if ("error" in found) return c.json(found, 404);
-      const { learner, goal } = found;
       const { targetDate } = (await readJsonObject(c)) ?? {};
       if (typeof targetDate !== "string" || !isCalendarDate(targetDate)) return c.json({ error: "invalidTargetDate" }, 400);
-      const row = db.update(goals).set({ targetDate }).where(eq(goals.id, goal.id)).returning().get()!;
-      return c.json(toGoal(row, targetsFor(curriculaDir, learner).get(row.curriculumKey), localDate(now())));
+      return c.json(changeGoal(found, { targetDate }));
     })
     .post("/goals/:goalId/skip", (c) => {
       const found = goalFromPath(db, c);
       if ("error" in found) return c.json(found, 404);
-      const { learner, goal } = found;
-      if (goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
-      const row = db.update(goals).set({ status: "skipped" }).where(eq(goals.id, goal.id)).returning().get()!;
-      return c.json(toGoal(row, targetsFor(curriculaDir, learner).get(row.curriculumKey), localDate(now())));
+      if (found.goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
+      return c.json(changeGoal(found, { status: "skipped" }));
     });
+
+  /** Saves `change` to one of the Learner's Goals, and answers with the Goal as it now is. */
+  function changeGoal({ learner, goal }: { learner: LearnerRow; goal: GoalRow }, change: Partial<Pick<GoalRow, "targetDate" | "status">>): Goal {
+    const row = db.update(goals).set(change).where(eq(goals.id, goal.id)).returning().get()!;
+    return toGoal(row, targetsFor(curriculaDir, learner).get(row.curriculumKey), localDate(now()));
+  }
 }
 
 /** The Learner named by the `:id` path parameter and their Goal named by `:goalId`, or which of them wasn't found. */
@@ -212,6 +212,10 @@ function termOf(curriculaDir: string, learner: LearnerRow, termKey: string): { s
 /** A Goal not saved yet; its position comes from its place in the queue. */
 type NewGoal = Omit<GoalRow, "id" | "position">;
 type QueueEntry = GoalRow | NewGoal;
+
+function newLessonGoal(learner: LearnerRow, subjectKey: string, lessonKey: string, targetDate: string): NewGoal {
+  return { learnerId: learner.id, subjectKey, curriculumKey: lessonKey, kind: "lesson", targetDate, status: "active" };
+}
 
 /** One Learner's Goal queue for a Subject, in order. */
 function subjectQueue(db: DbReader, learnerId: number, subjectKey: string): GoalRow[] {
@@ -268,9 +272,9 @@ function curriculumPlaces(subject: Subject): Map<string, number> {
 }
 
 /**
- * Spreads Target Dates evenly from today to the Term's end date over the Term's Lessons still to be met, in queue order;
- * the last lands on the end date. A Lesson with no Goal yet gets one, queued after the Goal of the nearest earlier Lesson
- * in Curriculum order, so the Parent's own ordering is kept. Met and skipped Lessons are left alone.
+ * Spreads Target Dates evenly from today to the Term's end date over the Term's Goals still to be met (its Lessons and
+ * Unit Tests), in queue order; the last lands on the end date. A Lesson with no Goal yet gets one, queued after the Goal
+ * of the nearest earlier Lesson in Curriculum order, so the Parent's own ordering is kept. Met and skipped Goals are left alone.
  */
 function spreadTargetDates(db: Db, learner: LearnerRow, subject: Subject, term: Term, today: string, termEndDate: string) {
   const places = curriculumPlaces(subject);
@@ -283,17 +287,11 @@ function spreadTargetDates(db: Db, learner: LearnerRow, subject: Subject, term: 
     queue.forEach((goal, i) => {
       if ((places.get(goal.curriculumKey) ?? Infinity) < place) after = i;
     });
-    queue.splice(after + 1, 0, {
-      learnerId: learner.id,
-      subjectKey: subject.key,
-      curriculumKey: lessonKey,
-      kind: "lesson",
-      targetDate: termEndDate,
-      status: "active",
-    });
+    queue.splice(after + 1, 0, newLessonGoal(learner, subject.key, lessonKey, termEndDate));
   }
 
-  const remaining = queue.filter((goal) => goal.kind === "lesson" && termLessons.includes(goal.curriculumKey) && isToBeMet(goal.status));
+  const termKeys = new Set([...termLessons, ...term.units.map((u) => u.key)]);
+  const remaining = queue.filter((goal) => termKeys.has(goal.curriculumKey) && isToBeMet(goal.status));
   const days = daysBetween(today, termEndDate);
   const dates = new Map(remaining.map((goal, i) => [goal, addDays(today, Math.floor(((i + 1) * days) / remaining.length))]));
   saveQueue(

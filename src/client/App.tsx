@@ -828,8 +828,8 @@ function Goals({ learner }: { learner: Learner }) {
 
   if (!goals || !lessons) return error ? <p className="error">{error}</p> : <p>{text.loading}</p>;
   // A new Goal can only be inserted into its own Subject's queue.
-  const lessonSubject = lessons.find((l) => l.key === lessonKey)?.subjectName;
-  const insertPoints = goals.filter((g) => g.subjectName === lessonSubject);
+  const lessonSubject = lessons.find((l) => l.key === lessonKey)?.subjectKey;
+  const insertPoints = goals.filter((g) => g.subjectKey === lessonSubject);
   const terms = [...new Map(lessons.map((l) => [l.termKey, l])).values()];
   return (
     <>
