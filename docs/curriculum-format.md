@@ -2,7 +2,7 @@
 
 A **Curriculum** is a folder of markdown files describing what a Learner should learn for one district, grade and school year. The app only reads these files (ADR 0004); Parents write them by hand or with their coding agent.
 
-This format is a public contract. The parser (`src/curriculum/`), `npm run curriculum:check` and the Curriculum Assistant instructions must change together.
+This format is a public contract. The parser (`src/curriculum/`), `npm run curriculum:check` and the Curriculum Assistant instructions (`docs/curriculum-assistant.md`) must change together. `curricula/north-colonie-grade-6/` is a complete worked example.
 
 ## Folder layout
 

@@ -11,3 +11,7 @@ Uses the five default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Curriculum Assistant
+
+To draft or edit a Curriculum in `curricula/`, follow `docs/curriculum-assistant.md`.
