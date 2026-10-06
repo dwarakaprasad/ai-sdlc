@@ -1,0 +1,244 @@
+/* Styles for the shared components (ui.tsx, TopBar.tsx, TutorMark.tsx). Tokens only. */
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 48px;
+  min-width: var(--touch);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-btn);
+  border: 1.5px solid transparent;
+  font-weight: 800;
+  font-size: var(--t-body);
+  white-space: nowrap;
+  transition: transform var(--m-fast), box-shadow var(--m-fast), color var(--m-base);
+}
+.btn-ink {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: 0 3px 0 var(--ink-edge);
+}
+.btn-ink:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink-edge);
+}
+.btn-ink:disabled {
+  background: var(--disabled);
+  box-shadow: 0 3px 0 var(--disabled-edge);
+  cursor: default;
+}
+.btn-outline {
+  min-height: var(--touch);
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--line);
+}
+.btn-outline:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.btn-quiet {
+  min-height: var(--touch);
+  padding: 0 var(--s-2);
+  margin-left: calc(-1 * var(--s-2));
+  background: none;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: var(--t-h3);
+}
+.btn-quiet:hover {
+  color: var(--ink);
+}
+.btn:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: var(--s-5);
+}
+
+/* Field */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.field-label {
+  font-weight: 800;
+  color: var(--ink);
+  font-size: var(--t-h3);
+}
+.field-hint {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.field :is(input, select, textarea) {
+  min-height: 52px;
+  padding: 0 var(--s-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--s-3);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--t-lead);
+  outline: none;
+  transition: border-color var(--m-base);
+}
+.field textarea {
+  padding: var(--s-3) var(--s-4);
+  resize: vertical;
+}
+.field :is(input, select, textarea):focus {
+  border-color: var(--ink);
+  background: var(--card);
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  padding: 1px var(--s-2);
+  background: var(--paper);
+  color: var(--ink-2);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tag-warm {
+  background: var(--warm-soft);
+  border-color: var(--warm-line);
+  color: var(--warm);
+}
+
+/* Meter */
+.meter {
+  display: block;
+  flex: 1;
+  height: 6px;
+  background: var(--line);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--meter-color, var(--ink));
+}
+
+/* Initial */
+.initial {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 30%;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* Wordmark and top bar */
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-weight: 800;
+  font-size: var(--t-wordmark);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: var(--s-2) var(--s-7);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.top-bar .wordmark {
+  font-size: var(--t-wordmark-small);
+}
+.top-nav {
+  display: flex;
+  gap: var(--s-1);
+}
+.top-nav button {
+  min-height: var(--touch);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--s-2);
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.top-nav button[aria-current="page"] {
+  color: var(--ink);
+  background: var(--paper);
+}
+.top-end {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+}
+
+/* Tutor mark */
+.tutor-mark {
+  flex: none;
+}
+.tutor-face {
+  fill: var(--ink);
+}
+.tutor-corner {
+  fill: var(--yellow);
+}
+.tutor-eyes {
+  fill: var(--on-ink);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.tutor-line {
+  fill: none;
+  stroke: var(--on-ink);
+  stroke-linecap: round;
+}
+.tutor-idle .tutor-eyes {
+  animation: tutor-blink 5s ease-in-out infinite;
+}
+.tutor-thinking .tutor-eyes {
+  transform: translate(2px, -3px);
+}
+@keyframes tutor-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.15);
+  }
+}
+
+@media (max-width: 760px) {
+  .top-bar {
+    padding: var(--s-2) var(--s-4);
+    gap: var(--s-3);
+  }
+  .top-bar .wordmark {
+    display: none;
+  }
+}

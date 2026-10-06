@@ -2,7 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { SessionMessage, TutorSession } from "../../shared/api";
 import { TUTOR_STARTED_STEPS } from "../../shared/api";
 import { api } from "../api";
+import { BackIcon } from "../components/icons";
 import { MathText } from "../components/MathText";
+import { TutorMark } from "../components/TutorMark";
+import { Button, Card } from "../components/ui";
 import { text } from "../text";
 import { QuizPanel, QuizStart } from "./Quiz";
 
@@ -15,6 +18,8 @@ export function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => 
   /** The Parent's daily token cap was reached, so the Tutor won't reply until tomorrow. */
   const [limited, setLimited] = useState(false);
   const [error, setError] = useState<string>();
+  /** The Lesson can't be taught: the Curriculum is invalid, or no longer has it. */
+  const [unavailable, setUnavailable] = useState(false);
   /** How many break prompts the Learner has waved away this sitting; each restarts the timer. */
   const [breaksSkipped, setBreaksSkipped] = useState(0);
   const [breakDue, setBreakDue] = useState(false);
@@ -32,8 +37,9 @@ export function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => 
     try {
       const opened = await api.openSession(goalId);
       if (isCancelled()) return;
-      if ("error" in opened) return setError(text.session.errors[opened.error] ?? text.genericError);
+      if ("error" in opened) return opened.error === "lessonUnavailable" ? setUnavailable(true) : setError(text.genericError);
       setError(undefined);
+      setUnavailable(false);
       setSession(opened);
       if (opened.step === "explanation") await takeTurn(opened);
     } catch {
@@ -81,75 +87,93 @@ export function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => 
   }
 
   const busy = streaming !== undefined;
+  if (unavailable) return <LessonUnavailable onBack={onBack} />;
   return (
-    <section className="session">
-      <button type="button" className="link" onClick={onBack}>
-        {text.session.back}
-      </button>
-      {error && <p className="error">{error}</p>}
-      {!session && !error && <p>{text.loading}</p>}
-      {session && breakDue && (
-        <p className="break" role="status">
-          {text.session.breakPrompt(session.breakMinutes * (breaksSkipped + 1))}{" "}
-          <button type="button" onClick={() => (setBreakDue(false), setBreaksSkipped((n) => n + 1))}>
-            {text.session.keepGoing}
-          </button>
-        </p>
-      )}
-      {session && (
-        <>
-          <p className="subject">{session.subjectName}</p>
-          <h1>{text.goalTitle(session.kind, session.title)}</h1>
-          <ol className="transcript">
-            {session.messages.map((m, i) => (
-              <li key={i} className={m.role}>
-                <span className="speaker">{m.role === "tutor" ? text.session.tutor : text.session.you}</span>
-                {m.role === "tutor" ? <MathText text={m.content} /> : m.content}
-              </li>
-            ))}
-            {busy && (
-              <li className="tutor" aria-live="polite">
-                <span className="speaker">{text.session.tutor}</span>
-                {streaming ? <MathText text={streaming} /> : <span className="hint">{text.session.thinking}</span>}
-              </li>
-            )}
-          </ol>
-          {limited && <p className="hint">{text.session.dailyLimit}</p>}
-          {failed && (
-            <p className="error">
-              {text.session.failed}{" "}
-              {/* A failed answer is back in the answer box to send again; a failed Explanation or re-teaching needs this button. */}
-              {TUTOR_STARTED_STEPS.includes(session.step) && (
-                <button type="button" onClick={() => void takeTurn(session)}>
-                  {text.session.retry}
-                </button>
+    <main className="legacy">
+      <section className="session">
+        <button type="button" className="link" onClick={onBack}>
+          {text.session.back}
+        </button>
+        {error && <p className="error">{error}</p>}
+        {!session && !error && <p>{text.loading}</p>}
+        {session && breakDue && (
+          <p className="break" role="status">
+            {text.session.breakPrompt(session.breakMinutes * (breaksSkipped + 1))}{" "}
+            <button type="button" onClick={() => (setBreakDue(false), setBreaksSkipped((n) => n + 1))}>
+              {text.session.keepGoing}
+            </button>
+          </p>
+        )}
+        {session && (
+          <>
+            <p className="subject">{session.subjectName}</p>
+            <h1>{text.goalTitle(session.kind, session.title)}</h1>
+            <ol className="transcript">
+              {session.messages.map((m, i) => (
+                <li key={i} className={m.role}>
+                  <span className="speaker">{m.role === "tutor" ? text.session.tutor : text.session.you}</span>
+                  {m.role === "tutor" ? <MathText text={m.content} /> : m.content}
+                </li>
+              ))}
+              {busy && (
+                <li className="tutor" aria-live="polite">
+                  <span className="speaker">{text.session.tutor}</span>
+                  {streaming ? <MathText text={streaming} /> : <span className="hint">{text.session.thinking}</span>}
+                </li>
               )}
-            </p>
-          )}
-          {session.step === "understanding-check" && (
-            <form className="answer" onSubmit={send}>
-              <label>
-                {text.session.messageLabel}
-                <textarea rows={3} value={draft} disabled={busy} onChange={(e) => setDraft(e.target.value)} />
-              </label>
-              <button type="submit" disabled={busy || draft.trim() === ""}>
-                {text.session.send}
-              </button>
-            </form>
-          )}
-          {!busy && session.step === "ready-for-quiz" && <QuizStart session={session} onStarted={setSession} onChanged={() => void open()} />}
-          {session.quiz && session.step !== "ready-for-quiz" && !failed && !busy && (
-            <QuizPanel
-              session={session}
-              quiz={session.quiz}
-              onAnswered={setSession}
-              onChanged={() => void open()}
-              onContinue={() => void takeTurn(session)}
-            />
-          )}
-          {session.step === "ended" && !session.quiz && <p className="hint">{text.session.ended}</p>}
-        </>
-      )}
-    </section>
+            </ol>
+            {limited && <p className="hint">{text.session.dailyLimit}</p>}
+            {failed && (
+              <p className="error">
+                {text.session.failed}{" "}
+                {/* A failed answer is back in the answer box to send again; a failed Explanation or re-teaching needs this button. */}
+                {TUTOR_STARTED_STEPS.includes(session.step) && (
+                  <button type="button" onClick={() => void takeTurn(session)}>
+                    {text.session.retry}
+                  </button>
+                )}
+              </p>
+            )}
+            {session.step === "understanding-check" && (
+              <form className="answer" onSubmit={send}>
+                <label>
+                  {text.session.messageLabel}
+                  <textarea rows={3} value={draft} disabled={busy} onChange={(e) => setDraft(e.target.value)} />
+                </label>
+                <button type="submit" disabled={busy || draft.trim() === ""}>
+                  {text.session.send}
+                </button>
+              </form>
+            )}
+            {!busy && session.step === "ready-for-quiz" && <QuizStart session={session} onStarted={setSession} onChanged={() => void open()} />}
+            {session.quiz && session.step !== "ready-for-quiz" && !failed && !busy && (
+              <QuizPanel
+                session={session}
+                quiz={session.quiz}
+                onAnswered={setSession}
+                onChanged={() => void open()}
+                onContinue={() => void takeTurn(session)}
+              />
+            )}
+            {session.step === "ended" && !session.quiz && <p className="hint">{text.session.ended}</p>}
+          </>
+        )}
+      </section>
+    </main>
+  );
+}
+
+/** Shown in place of the Session while its Lesson can't be taught: a calm note, not an error page. */
+function LessonUnavailable({ onBack }: { onBack: () => void }) {
+  return (
+    <main className="notice-page screen-enter">
+      <Card className="notice">
+        <TutorMark size={72} mood="resting" />
+        <p className="notice-text">{text.session.lessonUnavailable}</p>
+        <Button onClick={onBack}>
+          <BackIcon size={18} /> {text.session.back}
+        </Button>
+      </Card>
+    </main>
   );
 }

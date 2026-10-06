@@ -2,7 +2,9 @@ import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
 import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
-const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
+/** The Tutor's name, in the UI only: in the domain and the code it is the Tutor. */
+const TUTOR_NAME = "Jarvis";
+const pinDigits =`${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 
 /** What the Learner sees instead of a Tutor reply once the Parent's daily token cap is reached. */
 const DAILY_LIMIT = "That's enough for today! You've worked really hard. Come back tomorrow to carry on.";
@@ -40,6 +42,8 @@ export const text = {
   },
   learnerLogin: {
     heading: "Who's learning today?",
+    intro: "Tap your name to pick up where you left off.",
+    hasPin: "PIN",
     noProfiles: "No Learners yet. Ask your Parent to add you in the Parent area.",
     parentLink: "Parent area",
     pinHeading: (name: string) => `Hi ${name}! Enter your PIN.`,
@@ -51,11 +55,16 @@ export const text = {
   learnerHome: {
     heading: (name: string) => `Hi ${name}!`,
     noGoals: "There's nothing to work on yet. Your Parent will set your first Goal soon.",
-    goalsIntro: "Here's what to work on next:",
     target: (date: string) => `Aim to finish by ${formatDate(date)}`,
     catchUp: "This one's waiting for you. Let's catch up!",
+    catchUpTag: "Catch up",
+    continue: `Continue with ${TUTOR_NAME}`,
+    moreGoals: "Also on your list",
     start: "Start",
-    logout: "Log out",
+  },
+  learnerNav: {
+    today: "Today",
+    switchProfile: "Switch profile",
   },
   session: {
     back: "Back to my Goals",
@@ -67,7 +76,7 @@ export const text = {
     failed: "The Tutor couldn't reply just then.",
     retry: "Try again",
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
-    errors: { lessonUnavailable: LESSON_UNAVAILABLE } as Record<string, string>,
+    lessonUnavailable: LESSON_UNAVAILABLE,
     dailyLimit: DAILY_LIMIT,
     breakPrompt: (minutes: number) => `You've been working for ${minutes} minutes. Time for a short break? Stretch, get a drink, then come back.`,
     keepGoing: "Keep going",

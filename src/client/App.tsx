@@ -27,14 +27,14 @@ export function App() {
   };
   useEffect(() => void refresh(), []);
 
+  // Re-skinned screens lay out their own page; the rest still sit in the pre-redesign column until their ticket.
   let content;
   if (error) content = <p className="error">{error}</p>;
   else if (!state) content = <p>{text.loading}</p>;
-  else if (state.learner) content = <LearnerHome learner={state.learner} onLogout={refresh} />;
+  else if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
   else if (!state.parent.passwordSet) content = <SetupForm onDone={refresh} />;
   else if (state.parent.loggedIn) content = <ParentArea onLogout={refresh} />;
   else if (parentLogin) content = <LoginForm onDone={refresh} onBack={() => setParentLogin(false)} />;
-  else content = <LearnerLogin onDone={refresh} onParent={() => setParentLogin(true)} />;
-
-  return <main>{content}</main>;
+  else return <LearnerLogin onDone={refresh} onParent={() => setParentLogin(true)} />;
+  return <main className="legacy">{content}</main>;
 }

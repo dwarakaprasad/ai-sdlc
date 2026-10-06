@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { daysFromNow, expect, test } from "./fixtures";
 
 const EXPLANATION =
   "A ratio compares two quantities. If there are 2 cats for every 3 dogs, the ratio of cats to dogs is 2 to 3. What is the ratio of 4 cats to 5 dogs?";
@@ -15,9 +15,6 @@ const QUIZ = Array.from({ length: 10 }, (_, i) => ({
   explanation: `For every dog there are ${i + 1} cats.`,
   objective: OBJECTIVES[i % OBJECTIVES.length],
 }));
-
-/** A YYYY-MM-DD date `days` from today. */
-const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, passes the Lesson Quiz and meets the Goal", async ({ page, llm }) => {
   await page.goto("/");
@@ -49,7 +46,7 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
   const goal = page.getByRole("article").filter({ hasText: "Understanding ratios" });
   await llm.replyWith(EXPLANATION, { pieceDelayMs: 100 });
-  await goal.getByRole("button", { name: "Start" }).click();
+  await goal.getByRole("button", { name: "Continue with Jarvis" }).click();
 
   // The Explanation streams in: its start shows before its end has arrived.
   await expect(page.getByRole("heading", { name: "Understanding ratios" })).toBeVisible();
