@@ -25,10 +25,15 @@ function formatDate(date: string): string {
   return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
-/** A Lesson or Unit key as the Parent's Goal table shows it, e.g. "math/term-1/unit-2/lesson-3" as "1.2.3"; any other key as it is. */
+/**
+ * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
+ * "math/term-1/unit-2" as "U1.2"; any other key (an Orphaned Goal's, say) as it is.
+ */
 function shortKey(key: string): string {
   const numbers = key.match(/^[^/]+\/term-(\d+)\/unit-(\d+)(?:\/lesson-(\d+))?$/);
-  return numbers ? numbers.slice(1).filter(Boolean).join(".") : key;
+  if (!numbers) return key;
+  const [, term, unit, lesson] = numbers;
+  return lesson ? `${term}.${unit}.${lesson}` : `U${term}.${unit}`;
 }
 
 /** All UI text, in one place for later translation (English only in v1). */
@@ -248,7 +253,7 @@ export const text = {
     columns: { lesson: "Lesson", goal: "Goal", target: "Target", status: "Status", actions: "Actions" },
     shortKey,
     targetDate: formatDate,
-    daysLate: (days: number) => `${days} ${days === 1 ? "day" : "days"} late`,
+    daysOverdue: (days: number) => `${days} ${days === 1 ? "day" : "days"} overdue`,
     status: { active: "Active", met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string>,
     orphaned: "Lesson no longer in the Curriculum",
     review: "Review",
@@ -259,6 +264,7 @@ export const text = {
     retry: "Retry",
     markMet: "Mark met",
     repointLabel: (title: string) => `New Lesson for ${title}`,
+    repointOption: (subjectName: string, unitTitle: string, title: string) => `${subjectName} · ${unitTitle} · ${title}`,
     repoint: "Re-point",
     remove: "Remove",
     confirmRemove: (title: string) => `Remove the Goal "${title}"? Its Sessions and transcripts will be deleted too.`,

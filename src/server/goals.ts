@@ -542,7 +542,7 @@ function toGoal(row: GoalRow, targets: Map<string, Target> | undefined, today: s
     targetDate,
     status,
     overdue: isOverdue(row, today),
-    daysLate: isOverdue(row, today) ? daysBetween(targetDate, today) : 0,
+    daysOverdue: isOverdue(row, today) ? daysBetween(targetDate, today) : 0,
     orphaned: isOrphaned(row, targets),
   };
 }

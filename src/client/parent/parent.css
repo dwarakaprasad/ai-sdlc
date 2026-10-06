@@ -2,6 +2,8 @@
 
 .parent-app {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 .parent-page {
   padding: var(--s-6) var(--s-7);
@@ -10,8 +12,8 @@
 /* Learners: the list beside the one picked */
 .parent-layout {
   display: grid;
+  flex: 1;
   grid-template-columns: var(--dense-sidebar) minmax(0, 1fr);
-  min-height: calc(100vh - 61px);
 }
 .learner-list {
   display: flex;
@@ -187,7 +189,7 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.goal-late {
+.goal-overdue {
   color: var(--warm);
   font-weight: 700;
 }

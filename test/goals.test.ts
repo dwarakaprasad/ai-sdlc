@@ -82,7 +82,7 @@ describe("Goals in the Parent area", () => {
       targetDate: "2026-10-20",
       status: "active",
       overdue: false,
-      daysLate: 0,
+      daysOverdue: 0,
       orphaned: false,
     });
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toEqual([goal]);
@@ -171,19 +171,19 @@ describe("Overdue Goals", () => {
     ]);
   });
 
-  it("counts the days an overdue Goal is late, and none for a Goal that isn't overdue", async () => {
+  it("counts how many days a Goal is overdue, and none for a Goal that isn't overdue", async () => {
     const { parent, ada, setGoal, setToday } = await household();
     await setGoal(ratios, "2026-10-10");
     await setGoal(mainIdea, "2026-10-30");
     const goals = async (): Promise<Goal[]> => (await parent(`/api/parent/learners/${ada}/goals`)).json();
 
     setToday(2026, 10, 10);
-    expect((await goals()).map((g) => g.daysLate)).toEqual([0, 0]);
+    expect((await goals()).map((g) => g.daysOverdue)).toEqual([0, 0]);
 
     setToday(2026, 10, 13);
     expect(await goals()).toEqual([
-      expect.objectContaining({ lessonKey: mainIdea, overdue: false, daysLate: 0 }),
-      expect.objectContaining({ lessonKey: ratios, overdue: true, daysLate: 3 }),
+      expect.objectContaining({ lessonKey: mainIdea, overdue: false, daysOverdue: 0 }),
+      expect.objectContaining({ lessonKey: ratios, overdue: true, daysOverdue: 3 }),
     ]);
   });
 

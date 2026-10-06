@@ -50,7 +50,7 @@ export function Progress({ learner }: { learner: Learner }) {
               <span className="eyebrow">{goal.subjectName}</span>
               <h3 className="h3">{text.goalTitle(goal.kind, goal.title)}</h3>
               <span className={`goal-status status-${goal.status}`}>{text.goals.status[goal.status]}</span>
-              {goal.overdue && <Tag tone="warm">{text.goals.daysLate(goal.daysLate)}</Tag>}
+              {goal.overdue && <Tag tone="warm">{text.goals.daysOverdue(goal.daysOverdue)}</Tag>}
               {goal.orphaned && <Tag tone="warm">{text.goals.orphaned}</Tag>}
             </div>
             {goal.sessions.length === 0 ? (

@@ -212,7 +212,7 @@ export function Goals({ learner, onChange }: { learner: Learner; onChange: () =>
 }
 
 /**
- * One Goal's row: its Lesson key, title, Target Date (with the days late when overdue) and status, and a button that opens
+ * One Goal's row: its Lesson key, title, Target Date (with the days overdue when overdue) and status, and a button that opens
  * its actions in a row below. A Goal with the Parent (Flagged or Orphaned) offers Review; any other, Change.
  */
 function GoalRow({ goal, open, onToggle, children }: { goal: Goal; open: boolean; onToggle: () => void; children: ReactNode }) {
@@ -227,9 +227,9 @@ function GoalRow({ goal, open, onToggle, children }: { goal: Goal; open: boolean
         <td>
           {text.goalTitle(goal.kind, goal.title)} {goal.orphaned && <Tag tone="warm">{text.goals.orphaned}</Tag>}
         </td>
-        <td className={goal.overdue ? "goal-late" : undefined}>
+        <td className={goal.overdue ? "goal-overdue" : undefined}>
           {text.goals.targetDate(goal.targetDate)}
-          {goal.overdue && <small> · {text.goals.daysLate(goal.daysLate)}</small>}
+          {goal.overdue && <small> · {text.goals.daysOverdue(goal.daysOverdue)}</small>}
         </td>
         <td>
           <span className={`goal-status status-${goal.status}`}>{text.goals.status[goal.status]}</span>
@@ -344,7 +344,7 @@ function OrphanedGoalActions({
               <select value={lessonKey} onChange={(e) => setLessonKey(e.target.value)}>
                 {lessons.map((l) => (
                   <option key={l.key} value={l.key}>
-                    {`${l.subjectName} · ${text.goals.lessonOption(l.unitTitle, l.title)}`}
+                    {text.goals.repointOption(l.subjectName, l.unitTitle, l.title)}
                   </option>
                 ))}
               </select>

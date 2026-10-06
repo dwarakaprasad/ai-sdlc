@@ -27,9 +27,9 @@ test("the Parent sees which Goals need attention, filters to them, and reviews a
   const row = (title: string) => table.getByRole("row").filter({ hasText: title });
   await expect(row("Understanding ratios")).toContainText("Flagged");
   await expect(row("Understanding ratios").getByRole("button", { name: "Review" })).toBeVisible();
-  await expect(row("Equivalent ratios")).toContainText("3 days late");
+  await expect(row("Equivalent ratios")).toContainText("3 days overdue");
   await expect(row("Equivalent ratios").getByRole("button", { name: "Change" })).toBeVisible();
-  await expect(row("Dividing fractions")).not.toContainText("late");
+  await expect(row("Dividing fractions")).not.toContainText("overdue");
 
   // Needs attention leaves only the overdue and Flagged Goals.
   await page.getByRole("button", { name: "Needs attention · 2" }).click();

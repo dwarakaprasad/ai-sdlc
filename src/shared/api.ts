@@ -91,7 +91,7 @@ export type Goal = {
   status: GoalStatus;
   overdue: boolean;
   /** How many days past its Target Date an overdue Goal is; 0 when it isn't overdue. */
-  daysLate: number;
+  daysOverdue: number;
   /**
    * Its Lesson (or Unit) is gone from the Learner's Curriculum, say after a renumbering, so its title falls back to its key.
    * The Parent re-points or removes it; until then the Learner sees its Subject is with the Parent, with nothing to start. Never set while the Curriculum is invalid.
