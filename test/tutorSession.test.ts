@@ -16,6 +16,7 @@ describe("Starting a Tutor Session", () => {
       title: "Understanding ratios",
       step: "explanation",
       messages: [],
+      breakMinutes: 25,
     });
 
     llm.replyWith("A ratio compares two quantities. What is the ratio of 2 cats to 3 dogs?");
@@ -204,6 +205,7 @@ describe("Resuming a Session", () => {
         { role: "learner", content: "no idea" },
         { role: "tutor", content: "Another way: for every 2 cats there are 3 dogs. So?" },
       ],
+      breakMinutes: 25,
     });
     // The re-explanation already given still counts towards the cap: two more, then the Goal is flagged.
     for (const reply of ["Third way.", "Fourth way."]) {

@@ -40,7 +40,7 @@ export type GoalStatus = (typeof GOAL_STATUSES)[number];
 
 /**
  * A Goal as the Parent sees it (GET /api/parent/learners/:id/goals), in queue order per Subject.
- * `lessonKey` is the Unit key for a unit-test Goal. `overdue` is worked out on each request.
+ * `lessonKey` is the Unit key for a unit-test Goal. `overdue` and `orphaned` are worked out on each request.
  */
 export type Goal = {
   id: number;
@@ -53,7 +53,54 @@ export type Goal = {
   targetDate: string;
   status: GoalStatus;
   overdue: boolean;
+  /**
+   * Its Lesson (or Unit) is gone from the Learner's Curriculum, say after a renumbering, so its title falls back to its key.
+   * The Parent re-points or removes it; until then its Subject shows the Learner no card. Never set while the Curriculum is invalid.
+   */
+  orphaned: boolean;
 };
+
+/** One Session in the progress view: when it ran, where it got to, and the score of each finished Quiz attempt. Times are ISO 8601. */
+export type SessionSummary = {
+  id: number;
+  startedAt: string;
+  /** Null while the Session is open. */
+  endedAt: string | null;
+  step: SessionStep;
+  attempts: ({ number: number } & QuizScore)[];
+};
+
+/** One Goal in the progress view (GET /api/parent/learners/:id/progress): the Goal, with its Sessions oldest first. */
+export type GoalProgress = Goal & { sessions: SessionSummary[] };
+
+/** A Quiz question as the Parent reads it in a transcript: with its answer key, and the Learner's answer once given. */
+export type TranscriptQuestion = {
+  type: QuestionType;
+  prompt: string;
+  choices: string[];
+  objective: string;
+  answerKey: string;
+  answer: string | null;
+  correct: boolean | null;
+  /** The one-line explanation the Learner saw after answering. */
+  feedback: string | null;
+};
+
+/**
+ * A Session transcript as the Parent reads it (GET /api/parent/learners/:id/sessions/:sessionId): every message with when it
+ * was sent, and every Quiz attempt with its questions and answers, and its score once finished.
+ */
+export type SessionTranscript = Omit<SessionSummary, "attempts"> & {
+  goalId: number;
+  kind: GoalKind;
+  subjectName: string;
+  title: string;
+  messages: (SessionMessage & { at: string })[];
+  attempts: { number: number; questions: TranscriptQuestion[]; score?: QuizScore }[];
+};
+
+/** Body of POST /api/parent/learners/:id/goals/:goalId/repoint: the Lesson (or for a Unit Test, the Unit) an orphaned Goal now targets. */
+export type RepointInput = { lessonKey: string };
 
 /** A Lesson a Goal can be set from (GET /api/parent/learners/:id/lessons), in Curriculum order, with the Term it belongs to. */
 export type LessonOption = { key: string; subjectKey: string; subjectName: string; termKey: string; termName: string; unitTitle: string; title: string };
@@ -131,6 +178,8 @@ export type TutorSession = {
   step: SessionStep;
   messages: SessionMessage[];
   quiz?: QuizAttempt;
+  /** Minutes into a sitting before the Learner is prompted to take a break. */
+  breakMinutes: number;
 };
 
 /**
@@ -160,3 +209,15 @@ export const MAX_RE_EXPLANATIONS_LIMIT = 10;
 
 /** The largest Quiz attempt cap the Parent can set; at least one attempt is always allowed. */
 export const MAX_QUIZ_ATTEMPTS_LIMIT = 10;
+
+/**
+ * GET and PUT /api/parent/settings/limits (a PUT may send only the settings it changes).
+ * `dailyTokenCap` is the most tokens (in and out) the Tutor may use in a day, or null for no cap. Once a day's usage reaches it,
+ * Learner calls that need the LLM answer 429 `{ error: "dailyLimitReached" }` until the next day.
+ */
+export type LimitSettings = { dailyTokenCap: number | null; breakMinutes: number };
+
+export const DEFAULT_LIMIT_SETTINGS: LimitSettings = { dailyTokenCap: null, breakMinutes: 25 };
+
+/** The longest break-prompt time the Parent can set, in minutes. */
+export const MAX_BREAK_MINUTES = 240;

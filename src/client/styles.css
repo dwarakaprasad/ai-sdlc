@@ -89,6 +89,14 @@ select {
   color: #b00020;
   font-weight: 600;
 }
+.orphaned {
+  margin: 0.25rem 0 0.75rem;
+}
+.break {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #fff6d6;
+}
 .goal-card {
   border-left: 4px solid #0b57d0;
 }

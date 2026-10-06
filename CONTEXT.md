@@ -106,5 +106,9 @@ A scored set of questions covering every Learning Objective in a Unit, taken onc
 _Avoid_: Final, exam
 
 **Flagged Goal**:
-A Goal the Tutor has handed back to the Parent after too many failed Quiz attempts.
+A Goal the Tutor has handed back to the Parent after too many failed Quiz attempts or re-explanations. The Parent resolves it by retrying it (a fresh Session), skipping it, or marking it met (the queue moves on as if the Quiz were passed).
 _Avoid_: Failed goal, stuck goal
+
+**Orphaned Goal**:
+A Goal still to be met whose Lesson (or Unit) key is no longer in the Learner's Curriculum, because the Parent renumbered or removed it; worked out when shown, never stored. The Parent re-points it to another Lesson or removes it; until then its Subject shows the Learner no card.
+_Avoid_: Broken goal, dangling goal

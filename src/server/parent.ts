@@ -6,6 +6,7 @@ import { currentRole, endLogin, forbidRole, hashPassword, requireRole, startLogi
 import { listCurricula } from "./curricula";
 import { parentGoalRoutes } from "./goals";
 import { parentLearnerRoutes } from "./learners";
+import { parentProgressRoutes } from "./progress";
 import { parentSettingsRoutes } from "./settings";
 import { parentUsageRoutes } from "./usage";
 import { parentCredential } from "./db/schema";
@@ -20,6 +21,7 @@ export function parentRoutes(deps: AppDeps) {
     .get("/curricula", (c) => c.json(listCurricula(curriculaDir)))
     .route("/learners", parentLearnerRoutes(deps))
     .route("/learners/:id", parentGoalRoutes(deps))
+    .route("/learners/:id", parentProgressRoutes(deps))
     .route("/settings", parentSettingsRoutes(deps))
     .route("/usage", parentUsageRoutes(deps));
 
