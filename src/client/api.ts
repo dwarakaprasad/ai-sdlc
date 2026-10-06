@@ -7,13 +7,17 @@ import type {
   GoalCard,
   GoalInput,
   GoalOrder,
+  GoalProgress,
   Learner,
   LearnerInput,
   LessonOption,
+  LimitSettings,
   LlmSettings,
   LoggedInLearner,
   LearnerProfile,
   ParentStatus,
+  RepointInput,
+  SessionTranscript,
   SpreadInput,
   TeachingSettings,
   TurnEvents,
@@ -54,6 +58,14 @@ export const api = {
     send(`/api/parent/learners/${learnerId}/goals/${goalId}`, "PATCH", { targetDate }),
   reorderGoals: (learnerId: number, order: GoalOrder) => send(`/api/parent/learners/${learnerId}/goals/order`, "PUT", order),
   skipGoal: (learnerId: number, goalId: number) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/skip`, {}),
+  retryGoal: (learnerId: number, goalId: number) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/retry`, {}),
+  markGoalMet: (learnerId: number, goalId: number) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/met`, {}),
+  repointGoal: (learnerId: number, goalId: number, input: RepointInput) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/repoint`, input),
+  removeGoal: (learnerId: number, goalId: number) => send(`/api/parent/learners/${learnerId}/goals/${goalId}`, "DELETE"),
+  progress: (learnerId: number) => get<GoalProgress[]>(`/api/parent/learners/${learnerId}/progress`),
+  transcript: (learnerId: number, sessionId: number) => get<SessionTranscript>(`/api/parent/learners/${learnerId}/sessions/${sessionId}`),
+  limitSettings: () => get<LimitSettings>("/api/parent/settings/limits"),
+  saveLimitSettings: (settings: LimitSettings) => send("/api/parent/settings/limits", "PUT", settings),
   llmSettings: () => get<LlmSettings>("/api/parent/settings/llm"),
   saveLlmSettings: (settings: LlmSettings) => send("/api/parent/settings/llm", "PUT", settings),
   testConnection: async () => (await post("/api/parent/settings/llm/test", {})).json() as Promise<ConnectionTest>,
@@ -95,9 +107,10 @@ export const api = {
     sessionId: number,
     message: string | undefined,
     onText: (text: string) => void,
-  ): Promise<TurnEvents["done"] | TurnEvents["error"]> => {
+  ): Promise<TurnEvents["done"] | TurnEvents["error"] | { error: "dailyLimitReached" }> => {
     const res = await post(`/api/learner/sessions/${sessionId}/turn`, message === undefined ? {} : { message });
     if (res.status === 409) return { error: "sessionChanged" };
+    if (res.status === 429) return { error: "dailyLimitReached" };
     if (!res.ok || !res.body) return { error: "llmFailed" };
     for await (const { event, data } of serverSentEvents(res.body)) {
       if (event === "text") onText((data as TurnEvents["text"]).text);

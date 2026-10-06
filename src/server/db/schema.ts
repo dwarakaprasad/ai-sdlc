@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { GOAL_KINDS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, QUESTION_TYPES, SESSION_STEPS } from "../../shared/api";
+import { GOAL_KINDS, DEFAULT_LIMIT_SETTINGS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, QUESTION_TYPES, SESSION_STEPS } from "../../shared/api";
 
 /** Who a login belongs to. */
 export const roles = ["parent", "learner"] as const;
@@ -43,6 +43,10 @@ export const settings = sqliteTable("settings", {
   passMark: integer("pass_mark").notNull().default(DEFAULT_TEACHING_SETTINGS.passMark),
   /** How many Quiz attempts a Session may have before the Goal becomes a Flagged Goal. */
   maxQuizAttempts: integer("max_quiz_attempts").notNull().default(DEFAULT_TEACHING_SETTINGS.maxQuizAttempts),
+  /** The most tokens the Tutor may use in a day; null for no cap. */
+  dailyTokenCap: integer("daily_token_cap"),
+  /** Minutes into a sitting before the Learner is prompted to take a break. */
+  breakMinutes: integer("break_minutes").notNull().default(DEFAULT_LIMIT_SETTINGS.breakMinutes),
 });
 
 /** Tokens used by one LLM call, dated by the server's local day so daily totals match the household's day. */

@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { inFolder, validCurriculum, writeFixture } from "./curriculumFixture";
 import { readSse } from "./sse";
 import { createTestApp } from "./testApp";
@@ -12,10 +13,11 @@ const curriculum = {
 
 /**
  * An install with a logged-in Parent and one logged-in Learner, Ada (grade 6),
- * whose current Goal is "Understanding ratios".
+ * whose current Goal is "Understanding ratios". `now` fixes the clock. Ada's Curriculum is in `curriculumFolder`, for tests that edit it.
  */
-export async function household() {
-  const { client, llm } = createTestApp({ curriculaDir: writeFixture(inFolder("grade-6", curriculum)) });
+export async function household(options: { now?: () => Date } = {}) {
+  const curriculaDir = writeFixture(inFolder("grade-6", curriculum));
+  const { client, llm } = createTestApp({ curriculaDir, now: options.now });
   const parent = client();
   await parent("/api/parent/setup", { password: "correct horse" });
   const ada = (await (await parent("/api/parent/learners", { name: "Ada", grade: "6", curriculumId: "grade-6" })).json()).id as number;
@@ -37,5 +39,6 @@ export async function household() {
     return session.id as number;
   };
   const parentGoals = async () => (await parent(`/api/parent/learners/${ada}/goals`)).json();
-  return { client, parent, learner, llm, ada, goalId, openSession, turn, startLesson, parentGoals };
+  const curriculumFolder = join(curriculaDir, "grade-6");
+  return { client, parent, learner, llm, ada, goalId, openSession, turn, startLesson, parentGoals, curriculumFolder };
 }

@@ -1,8 +1,11 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
+import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
+
+/** What the Learner sees instead of a Tutor reply once the Parent's daily token cap is reached. */
+const DAILY_LIMIT = "That's enough for today! You've worked really hard. Come back tomorrow to carry on.";
 
 /** A YYYY-MM-DD date as e.g. "Tue, Oct 20". Read as a local day so it never shifts across time zones. */
 function formatDate(date: string): string {
@@ -63,6 +66,9 @@ export const text = {
     failed: "The Tutor couldn't reply just then.",
     retry: "Try again",
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
+    dailyLimit: DAILY_LIMIT,
+    breakPrompt: (minutes: number) => `You've been working for ${minutes} minutes. Time for a short break? Stretch, get a drink, then come back.`,
+    keepGoing: "Keep going",
   },
   quiz: {
     heading: { lesson: "Lesson Quiz", "unit-test": "Unit Test" } satisfies Record<GoalKind, string>,
@@ -90,6 +96,7 @@ export const text = {
     errors: {
       invalidAnswer: "Choose one of the answers, or for a number question, type a number.",
       answerRequired: "Type your answer first.",
+      dailyLimitReached: DAILY_LIMIT,
     } as Record<string, string>,
   },
   teachingSettings: {
@@ -115,6 +122,14 @@ export const text = {
     /** Shown after a Goal's details; an active Goal needs no label. */
     status: { active: undefined, met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string | undefined>,
     overdue: "Overdue",
+    orphaned: "Lesson no longer in the Curriculum",
+    orphanedHint: "This Goal's Lesson was renumbered or removed. Re-point it to a Lesson, or remove it. Until then the Learner sees no card for this Subject.",
+    retry: "Retry",
+    markMet: "Mark met",
+    repointLabel: (title: string) => `New Lesson for ${title}`,
+    repoint: "Re-point",
+    remove: "Remove",
+    confirmRemove: (title: string) => `Remove the Goal "${title}"? Its Sessions and transcripts will be deleted too.`,
     lessonLabel: "Lesson",
     lessonOption: (unitTitle: string, title: string) => `${unitTitle} · ${title}`,
     targetDateLabel: "Target Date",
@@ -142,7 +157,10 @@ export const text = {
       unknownTerm: "Choose a Term from this Learner's Curriculum.",
       invalidTermEndDate: "Choose a Term end date.",
       termEndDatePassed: "The Term end date can't be in the past.",
-      goalNotActive: "Only a Goal still being worked on can be skipped.",
+      goalNotActive: "Only a Goal still to be met can be skipped.",
+      goalNotFlagged: "This Goal isn't flagged any more.",
+      goalNotOrphaned: "This Goal's Lesson is in the Curriculum, so it can't be re-pointed or removed. Skip it instead.",
+      lessonUnavailable: "This Goal's Lesson isn't in the Curriculum, so it can't be marked met.",
       invalidOrder: "The Goals changed meanwhile. Try again.",
     } as Record<string, string>,
   },
@@ -200,6 +218,36 @@ export const text = {
       unknownModel: (_envVar: string, model: string) => `The provider doesn't recognise the model "${model}". Check its name.`,
       failed: () => "Couldn't reach the provider. Check your internet connection and try again.",
     } satisfies Record<LlmErrorKind, (envVar: string, model: string) => string>,
+  },
+  progress: {
+    show: "Show progress",
+    hide: "Hide progress",
+    summary: (met: number, overdue: number, flagged: number, orphaned: number) =>
+      `${met} met · ${overdue} overdue · ${flagged} flagged · ${orphaned} with a missing Lesson`,
+    noSessions: "No Sessions yet.",
+    session: (startedAt: string, open: boolean) => `Session on ${new Date(startedAt).toLocaleString()}${open ? " (open)" : ""}`,
+    attempt: (number: number, correct: number, total: number, passed: boolean) =>
+      `Quiz ${number}: ${correct} out of ${total}${passed ? " (passed)" : ""}`,
+    readTranscript: "Read transcript",
+    closeTranscript: "Close transcript",
+    noMessages: "No messages yet.",
+    quizHeading: (number: number) => `Quiz ${number}`,
+    question: (n: number, prompt: string) => `${n}. ${prompt}`,
+    answer: (answer: string | null, correct: boolean | null, answerKey: string) =>
+      answer === null ? `Not answered yet (answer: ${answerKey})` : `Answered "${answer}": ${correct ? "right" : `wrong (answer: ${answerKey})`}`,
+  },
+  limitSettings: {
+    heading: "Limits",
+    dailyTokenCapLabel: "Daily token cap",
+    dailyTokenCapHint: "The most tokens the Tutor may use in a day. Once reached, the Learner is told that's enough for today. Leave empty for no cap.",
+    breakMinutesLabel: "Break prompt after (minutes)",
+    breakMinutesHint: "How long into a sitting the Learner is prompted to take a break.",
+    save: "Save",
+    saved: "Saved.",
+    errors: {
+      invalidDailyTokenCap: "The daily token cap must be a whole number above 0, or empty for no cap.",
+      invalidBreakMinutes: `The break prompt time must be a whole number of minutes from 1 to ${MAX_BREAK_MINUTES}.`,
+    } as Record<string, string>,
   },
   usage: {
     heading: "Token usage",

@@ -250,7 +250,7 @@ describe("The Unit Test", () => {
 
     expect(res.status).toBe(201);
     const session = await res.json();
-    expect(session).toEqual({ id: expect.any(Number), kind: "unit-test", subjectName: "Math", title: "Ratios", step: "ready-for-quiz", messages: [] });
+    expect(session).toEqual({ id: expect.any(Number), kind: "unit-test", subjectName: "Math", title: "Ratios", step: "ready-for-quiz", messages: [], breakMinutes: 25 });
 
     // Questions on only the first Lesson's Learning Objectives leave the second Lesson untested.
     expect((await startQuiz(session.id, questionsOn(OBJECTIVES[ratios]!, "X"))).status).toBe(502);

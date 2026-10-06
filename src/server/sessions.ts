@@ -23,8 +23,8 @@ import { contentOfGoal, meetGoal, type GoalContent, type GoalRow } from "./goals
 import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
 import { appLlm } from "./llm";
-import { teachingSettings } from "./settings";
-import { localDate } from "./usage";
+import { limitSettings, teachingSettings } from "./settings";
+import { dailyLimitReached, localDate } from "./usage";
 
 type SessionRow = typeof sessions.$inferSelect;
 type AttemptRow = typeof quizAttempts.$inferSelect;
@@ -82,6 +82,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (check === "noTurnNow") return c.json({ error: "noTurnNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
+      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
 
       const turn = tutorTurn(
         {
@@ -145,6 +146,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (session.step !== "ready-for-quiz") return c.json({ error: "noQuizNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
+      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
 
       // Every attempt gets new questions: none may repeat one the Session has already asked.
       const earlier = db
@@ -201,6 +203,8 @@ export function learnerSessionRoutes(deps: AppDeps) {
       const content = contentOfGoal(curriculaDir, learner, goal);
       if (!content) return c.json({ error: "lessonUnavailable" }, 409);
       const lesson = toTutorLesson(content);
+      // Only a written answer is graded by the LLM; the app checks the others itself, so they go on past the cap.
+      if (question.type === "short-answer" && dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
 
       const grade = await llmCall(() => gradeAnswer(appLlm(deps), lesson, learner.grade, question, given));
       if (!grade) return c.json({ error: "llmFailed" }, 502);
@@ -264,6 +268,7 @@ function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): Tutor
     step: session.step,
     messages: transcriptOf(db, session.id),
     ...(attempt && { quiz: toQuizAttempt(attempt, questionsOf(db, attempt.id), teachingSettings(db).maxQuizAttempts) }),
+    breakMinutes: limitSettings(db).breakMinutes,
   };
 }
 

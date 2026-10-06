@@ -5,6 +5,7 @@ import type {
   DailyUsage,
   Goal,
   GoalCard,
+  GoalProgress,
   Learner,
   LearnerInput,
   LessonOption,
@@ -14,10 +15,11 @@ import type {
   ParentStatus,
   QuizAttempt,
   SessionMessage,
+  SessionTranscript,
   TeachingSettings,
   TutorSession,
 } from "../shared/api";
-import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, TUTOR_STARTED_STEPS } from "../shared/api";
+import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, TUTOR_STARTED_STEPS } from "../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
 import { MathText } from "./MathText";
@@ -122,6 +124,7 @@ function ParentArea({ onLogout }: { onLogout: () => void }) {
       <Curricula />
       <LlmSettingsForm />
       <TeachingSettingsForm />
+      <LimitSettingsForm />
       <Usage />
       <button type="button" onClick={() => api.logoutParent().then(onLogout)}>
         {text.parentArea.logout}
@@ -316,6 +319,53 @@ function TeachingSettingsForm() {
   );
 }
 
+/** The daily token cap (empty for none) and when the Learner is prompted to take a break. */
+function LimitSettingsForm() {
+  const [values, setValues] = useState<{ dailyTokenCap: string; breakMinutes: string }>();
+  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  useEffect(
+    () =>
+      void api.limitSettings().then(
+        (s) => setValues({ dailyTokenCap: s.dailyTokenCap === null ? "" : String(s.dailyTokenCap), breakMinutes: String(s.breakMinutes) }),
+        () => setMessage({ text: text.genericError, error: true }),
+      ),
+    [],
+  );
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!values) return;
+    const cap = values.dailyTokenCap.trim();
+    const res = await api.saveLimitSettings({ dailyTokenCap: cap === "" ? null : Number(cap), breakMinutes: Number(values.breakMinutes) });
+    if (res.ok) return setMessage({ text: text.limitSettings.saved });
+    const { error } = await res.json().catch(() => ({}));
+    setMessage({ text: text.limitSettings.errors[error] ?? text.genericError, error: true });
+  }
+
+  const change = (name: keyof NonNullable<typeof values>) => (e: { target: { value: string } }) =>
+    values && (setValues({ ...values, [name]: e.target.value }), setMessage(undefined));
+  if (values === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  return (
+    <section>
+      <h2>{text.limitSettings.heading}</h2>
+      <form className="card" onSubmit={save}>
+        <label>
+          {text.limitSettings.dailyTokenCapLabel}
+          <input type="number" min={1} step={1} value={values.dailyTokenCap} onChange={change("dailyTokenCap")} />
+          <span className="hint">{text.limitSettings.dailyTokenCapHint}</span>
+        </label>
+        <label>
+          {text.limitSettings.breakMinutesLabel}
+          <input type="number" min={1} max={MAX_BREAK_MINUTES} step={1} value={values.breakMinutes} onChange={change("breakMinutes")} />
+          <span className="hint">{text.limitSettings.breakMinutesHint}</span>
+        </label>
+        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
+        <button type="submit">{text.limitSettings.save}</button>
+      </form>
+    </section>
+  );
+}
+
 function Usage() {
   const [days, setDays] = useState<DailyUsage[]>();
   const [error, setError] = useState<string>();
@@ -438,7 +488,20 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
   const [streaming, setStreaming] = useState<string>();
   const [draft, setDraft] = useState("");
   const [failed, setFailed] = useState(false);
+  /** The Parent's daily token cap was reached, so the Tutor won't reply until tomorrow. */
+  const [limited, setLimited] = useState(false);
   const [error, setError] = useState<string>();
+  /** How many break prompts the Learner has waved away this sitting; each restarts the timer. */
+  const [breaksSkipped, setBreaksSkipped] = useState(0);
+  const [breakDue, setBreakDue] = useState(false);
+  const breakMinutes = session?.breakMinutes;
+
+  // The break prompt counts from when this sitting opened the Session, not from when the Session first started.
+  useEffect(() => {
+    if (breakMinutes === undefined) return;
+    const timer = setTimeout(() => setBreakDue(true), breakMinutes * 60_000);
+    return () => clearTimeout(timer);
+  }, [breakMinutes, breaksSkipped]);
 
   /** Opens (or resumes) the Session; a new one, or one whose Explanation never arrived, starts with the Explanation. */
   async function open(isCancelled = () => false) {
@@ -471,6 +534,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
     if (message !== undefined) setDraft(message);
     // Another tab moved the Session on first: show where it is now.
     if (result.error === "sessionChanged") return open();
+    if (result.error === "dailyLimitReached") return setLimited(true);
     setFailed(true);
   }
 
@@ -497,6 +561,14 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
       </button>
       {error && <p className="error">{error}</p>}
       {!session && !error && <p>{text.loading}</p>}
+      {session && breakDue && (
+        <p className="break" role="status">
+          {text.session.breakPrompt(session.breakMinutes * (breaksSkipped + 1))}{" "}
+          <button type="button" onClick={() => (setBreakDue(false), setBreaksSkipped((n) => n + 1))}>
+            {text.session.keepGoing}
+          </button>
+        </p>
+      )}
       {session && (
         <>
           <p className="subject">{session.subjectName}</p>
@@ -515,6 +587,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
               </li>
             )}
           </ol>
+          {limited && <p className="hint">{text.session.dailyLimit}</p>}
           {failed && (
             <p className="error">
               {text.session.failed}{" "}
@@ -558,6 +631,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
 function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; onStarted: (s: TutorSession) => void; onChanged: () => void }) {
   const [writing, setWriting] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [limited, setLimited] = useState(false);
 
   async function start() {
     setWriting(true);
@@ -567,10 +641,12 @@ function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; o
     if ("id" in result) return onStarted(result);
     // Another tab started the attempt first: show it.
     if (result.error === "sessionChanged" || result.error === "noQuizNow") return onChanged();
+    if (result.error === "dailyLimitReached") return setLimited(true);
     setFailed(true);
   }
 
   if (writing) return <p className="hint" aria-live="polite">{text.quiz.writing}</p>;
+  if (limited) return <p className="hint">{text.session.dailyLimit}</p>;
   return (
     <div className="quiz">
       {failed && <p className="error">{text.quiz.failed}</p>}
@@ -753,6 +829,7 @@ function Learners() {
             <h3>{learner.name}</h3>
             <p className="hint">{text.learners.details(learner.grade, learner.curriculumId, learner.hasPin)}</p>
             <Goals learner={learner} />
+            <Progress learner={learner} />
             <div className="actions">
               <button type="button" onClick={() => setEditing(learner)}>
                 {text.learners.edit}
@@ -843,6 +920,7 @@ function Goals({ learner }: { learner: Learner }) {
               {text.goals.goal(goal.subjectName, text.goalTitle(goal.kind, goal.title), goal.targetDate)}
               {text.goals.status[goal.status] && ` · ${text.goals.status[goal.status]}`}
               {goal.overdue && <span className="overdue"> · {text.goals.overdue}</span>}
+              {goal.orphaned && <span className="overdue"> · {text.goals.orphaned}</span>}
               <span className="goal-actions">
                 <input
                   type="date"
@@ -861,12 +939,25 @@ function Goals({ learner }: { learner: Learner }) {
                 <button type="button" disabled={!sameSubject(goals[i + 1])} onClick={() => void move(goal, 1)}>
                   {text.goals.moveDown}
                 </button>
-                {goal.status === "active" && (
+                {goal.status === "flagged" && (
+                  <>
+                    <button type="button" onClick={async () => void (await settle(await api.retryGoal(learner.id, goal.id)))}>
+                      {text.goals.retry}
+                    </button>
+                    {!goal.orphaned && (
+                      <button type="button" onClick={async () => void (await settle(await api.markGoalMet(learner.id, goal.id)))}>
+                        {text.goals.markMet}
+                      </button>
+                    )}
+                  </>
+                )}
+                {(goal.status === "active" || goal.status === "flagged") && (
                   <button type="button" onClick={async () => void (await settle(await api.skipGoal(learner.id, goal.id)))}>
                     {text.goals.skip}
                   </button>
                 )}
               </span>
+              {goal.orphaned && <OrphanedGoalActions learnerId={learner.id} goal={goal} lessons={lessons} settle={settle} />}
             </li>
           );
         })}
@@ -934,6 +1025,158 @@ function Goals({ learner }: { learner: Learner }) {
         </>
       )}
     </>
+  );
+}
+
+/** Re-points an orphaned Goal to a Lesson of the Curriculum (a Unit Test can only be removed here), or removes it. */
+function OrphanedGoalActions({
+  learnerId,
+  goal,
+  lessons,
+  settle,
+}: {
+  learnerId: number;
+  goal: Goal;
+  lessons: LessonOption[];
+  settle: (res: Response) => Promise<boolean>;
+}) {
+  const [lessonKey, setLessonKey] = useState(lessons[0]?.key ?? "");
+
+  async function remove() {
+    if (!window.confirm(text.goals.confirmRemove(goal.title))) return;
+    await settle(await api.removeGoal(learnerId, goal.id));
+  }
+
+  return (
+    <div className="orphaned">
+      <p className="hint">{text.goals.orphanedHint}</p>
+      {goal.kind === "lesson" && lessons.length > 0 && (
+        <form onSubmit={async (e) => (e.preventDefault(), void (await settle(await api.repointGoal(learnerId, goal.id, { lessonKey }))))}>
+          <label>
+            {text.goals.repointLabel(goal.title)}
+            <select value={lessonKey} onChange={(e) => setLessonKey(e.target.value)}>
+              {lessons.map((l) => (
+                <option key={l.key} value={l.key}>
+                  {`${l.subjectName} · ${text.goals.lessonOption(l.unitTitle, l.title)}`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">{text.goals.repoint}</button>
+        </form>
+      )}
+      <button type="button" onClick={() => void remove()}>
+        {text.goals.remove}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A Learner's progress for the Parent: how many Goals are met, overdue, flagged or orphaned, and under each Goal its
+ * Sessions with every finished Quiz attempt's score, and a transcript to read.
+ */
+function Progress({ learner }: { learner: Learner }) {
+  const [open, setOpen] = useState(false);
+  const [progress, setProgress] = useState<GoalProgress[]>();
+  const [transcript, setTranscript] = useState<SessionTranscript>();
+  const [error, setError] = useState<string>();
+
+  async function toggle() {
+    if (open) return (setOpen(false), setTranscript(undefined));
+    setOpen(true);
+    setProgress(await api.progress(learner.id).catch(() => (setError(text.genericError), undefined)));
+  }
+
+  async function read(sessionId: number) {
+    setTranscript(await api.transcript(learner.id, sessionId).catch(() => (setError(text.genericError), undefined)));
+  }
+
+  const count = (has: (g: GoalProgress) => boolean) => progress?.filter(has).length ?? 0;
+  return (
+    <>
+      <button type="button" onClick={() => void toggle()}>
+        {open ? text.progress.hide : text.progress.show}
+      </button>
+      {open && error && <p className="error">{error}</p>}
+      {open && !progress && !error && <p>{text.loading}</p>}
+      {open && progress && (
+        <div className="progress">
+          <p>
+            {text.progress.summary(
+              count((g) => g.status === "met"),
+              count((g) => g.overdue),
+              count((g) => g.status === "flagged"),
+              count((g) => g.orphaned),
+            )}
+          </p>
+          <ul>
+            {progress.map((goal) => (
+              <li key={goal.id}>
+                {text.goals.goal(goal.subjectName, text.goalTitle(goal.kind, goal.title), goal.targetDate)}
+                {text.goals.status[goal.status] && ` · ${text.goals.status[goal.status]}`}
+                {goal.overdue && <span className="overdue"> · {text.goals.overdue}</span>}
+                {goal.orphaned && <span className="overdue"> · {text.goals.orphaned}</span>}
+                <ul>
+                  {goal.sessions.length === 0 && <li className="hint">{text.progress.noSessions}</li>}
+                  {goal.sessions.map((s) => (
+                    <li key={s.id}>
+                      {text.progress.session(s.startedAt, s.endedAt === null)}{" "}
+                      <button type="button" className="link" onClick={() => void read(s.id)}>
+                        {text.progress.readTranscript}
+                      </button>
+                      {s.attempts.map((a) => (
+                        <div key={a.number} className="hint">
+                          {text.progress.attempt(a.number, a.correct, a.total, a.passed)}
+                        </div>
+                      ))}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+          {transcript && <Transcript transcript={transcript} onClose={() => setTranscript(undefined)} />}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** One Session as the Parent reads it: every message, then each Quiz attempt's questions and answers. */
+function Transcript({ transcript, onClose }: { transcript: SessionTranscript; onClose: () => void }) {
+  return (
+    <section className="card">
+      <p className="subject">{transcript.subjectName}</p>
+      <h4>{text.goalTitle(transcript.kind, transcript.title)}</h4>
+      <p className="hint">{text.progress.session(transcript.startedAt, transcript.endedAt === null)}</p>
+      {transcript.messages.length === 0 && <p className="hint">{text.progress.noMessages}</p>}
+      <ol className="transcript">
+        {transcript.messages.map((m, i) => (
+          <li key={i} className={m.role}>
+            <span className="speaker">{m.role === "tutor" ? text.session.tutor : text.session.you}</span>
+            {m.role === "tutor" ? <MathText text={m.content} /> : m.content}
+          </li>
+        ))}
+      </ol>
+      {transcript.attempts.map((a) => (
+        <div key={a.number}>
+          <h5>{text.progress.quizHeading(a.number)}</h5>
+          {a.score && <p>{text.quiz.score(a.score.correct, a.score.total)}</p>}
+          <ol>
+            {a.questions.map((q, i) => (
+              <li key={i}>
+                <MathText text={text.progress.question(i + 1, q.prompt)} />
+                <div className="hint">{text.progress.answer(q.answer, q.correct, q.answerKey)}</div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      <button type="button" onClick={onClose}>
+        {text.progress.closeTranscript}
+      </button>
+    </section>
   );
 }
 

@@ -2,10 +2,13 @@ import { Hono } from "hono";
 import { LlmError } from "../llm/provider";
 import { DEFAULT_LLM_SETTINGS, isProviderId, providerInfo } from "../shared/llm";
 import {
+  DEFAULT_LIMIT_SETTINGS,
   DEFAULT_TEACHING_SETTINGS,
+  MAX_BREAK_MINUTES,
   MAX_QUIZ_ATTEMPTS_LIMIT,
   MAX_RE_EXPLANATIONS_LIMIT,
   type ConnectionTest,
+  type LimitSettings,
   type LlmSettings,
   type TeachingSettings,
 } from "../shared/api";
@@ -30,6 +33,18 @@ export function teachingSettings(db: DbReader): TeachingSettings {
   const { maxReExplanations, passMark, maxQuizAttempts } = row;
   return { maxReExplanations, passMark, maxQuizAttempts };
 }
+
+/** The daily token cap and break prompt: the Parent's choices, or the defaults until they make them. */
+export function limitSettings(db: DbReader): LimitSettings {
+  const row = db.select().from(settings).get();
+  if (!row) return { ...DEFAULT_LIMIT_SETTINGS };
+  const { dailyTokenCap, breakMinutes } = row;
+  return { dailyTokenCap, breakMinutes };
+}
+
+/** Whether `value` is a whole number from `min` to `max`. */
+const isWholeIn = (value: unknown, min: number, max: number): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 
 /** Each teaching setting's allowed whole-number range, and the error a value outside it gets. */
 const TEACHING_RANGES: { [K in keyof TeachingSettings]: { min: number; max: number; error: string } } = {
@@ -59,11 +74,28 @@ export function parentSettingsRoutes(deps: AppDeps) {
         if (!(name in body)) continue;
         const value = body[name];
         const { min, max, error } = TEACHING_RANGES[name];
-        if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) return c.json({ error }, 400);
+        if (!isWholeIn(value, min, max)) return c.json({ error }, 400);
         changes[name] = value;
       }
       if (Object.keys(changes).length > 0) saveSettings(db, changes);
       return c.json(teachingSettings(db));
+    })
+    .get("/limits", (c) => c.json(limitSettings(db)))
+    .put("/limits", async (c) => {
+      // Like the teaching settings: only those sent change, and nothing is saved unless every one sent is valid.
+      const body = (await readJsonObject(c)) ?? {};
+      const changes: Partial<LimitSettings> = {};
+      if ("dailyTokenCap" in body) {
+        const cap = body.dailyTokenCap;
+        if (cap !== null && !isWholeIn(cap, 1, Number.MAX_SAFE_INTEGER)) return c.json({ error: "invalidDailyTokenCap" }, 400);
+        changes.dailyTokenCap = cap;
+      }
+      if ("breakMinutes" in body) {
+        if (!isWholeIn(body.breakMinutes, 1, MAX_BREAK_MINUTES)) return c.json({ error: "invalidBreakMinutes" }, 400);
+        changes.breakMinutes = body.breakMinutes;
+      }
+      if (Object.keys(changes).length > 0) saveSettings(db, changes);
+      return c.json(limitSettings(db));
     })
     .get("/llm", (c) => c.json(llmSettings(db)))
     .put("/llm", async (c) => {

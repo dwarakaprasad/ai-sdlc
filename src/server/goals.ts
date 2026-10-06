@@ -40,10 +40,15 @@ function lessonsFor(curriculaDir: string, learner: LearnerRow): LessonOption[] {
   );
 }
 
-/** Every Lesson and Unit in the Learner's Curriculum by key; empty while the Curriculum is invalid or missing. */
-function targetsFor(curriculaDir: string, learner: LearnerRow): Map<string, Target> {
+/**
+ * Every Lesson and Unit in the Learner's Curriculum by key; undefined while the Curriculum is invalid or missing, when no Goal
+ * can be told apart as orphaned.
+ */
+function targetsFor(curriculaDir: string, learner: LearnerRow): Map<string, Target> | undefined {
+  const curriculum = curriculumOf(curriculaDir, learner);
+  if (!curriculum) return undefined;
   const targets = new Map<string, Target>();
-  for (const subject of curriculumOf(curriculaDir, learner)?.subjects ?? []) {
+  for (const subject of curriculum.subjects) {
     for (const unit of subject.terms.flatMap((t) => t.units)) {
       const at = { subjectKey: subject.key, subjectName: subject.name };
       targets.set(unit.key, { kind: "unit-test", ...at, title: unit.title });
@@ -120,8 +125,13 @@ function isToBeMet(status: GoalStatus): boolean {
   return status === "active" || status === "flagged";
 }
 
+/** Orphaned: the Goal's Lesson or Unit is gone from a Curriculum that is otherwise valid. Never stored. */
+function isOrphaned(row: GoalRow, targets: Map<string, Target> | undefined): boolean {
+  return targets !== undefined && !targets.has(row.curriculumKey);
+}
+
 /** A Learner's Goals with their Lesson or Unit titles, each Subject's queue in order. */
-function goalsOf({ db, curriculaDir, now }: AppDeps, learner: LearnerRow): Goal[] {
+export function goalsOf({ db, curriculaDir, now }: AppDeps, learner: LearnerRow): Goal[] {
   const targets = targetsFor(curriculaDir, learner);
   const today = localDate(now());
   return db
@@ -130,12 +140,12 @@ function goalsOf({ db, curriculaDir, now }: AppDeps, learner: LearnerRow): Goal[
     .where(eq(goals.learnerId, learner.id))
     .orderBy(goals.subjectKey, goals.position, goals.id)
     .all()
-    .map((row) => toGoal(row, targets.get(row.curriculumKey), today));
+    .map((row) => toGoal(row, targets, today));
 }
 
 /**
  * The Learner's Goal cards: each Subject's current Goal (the first in its queue still to be met), earliest Target Date first.
- * A Flagged Goal waits for the Parent, so its Subject shows no card until the Parent resolves it.
+ * A Flagged or orphaned Goal waits for the Parent, so its Subject shows no card until the Parent resolves it.
  */
 export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
   const current = new Map<string, Goal>();
@@ -143,7 +153,7 @@ export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
     if (isToBeMet(goal.status) && !current.has(goal.subjectKey)) current.set(goal.subjectKey, goal);
   }
   return [...current.values()]
-    .filter((goal) => goal.status === "active")
+    .filter((goal) => goal.status === "active" && !goal.orphaned)
     .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.subjectName.localeCompare(b.subjectName))
     .map(({ id, kind, subjectName, title, targetDate, overdue }) => ({ id, kind, subjectName, title, targetDate, overdue }));
 }
@@ -169,7 +179,8 @@ export function parentGoalRoutes(deps: AppDeps) {
       const body = await readJsonObject(c);
       if (!body) return c.json({ error: "invalidBody" }, 400);
       const { lessonKey, targetDate, beforeGoalId } = body;
-      const target = typeof lessonKey === "string" ? targetsFor(curriculaDir, learner).get(lessonKey) : undefined;
+      const targets = targetsFor(curriculaDir, learner);
+      const target = typeof lessonKey === "string" ? targets?.get(lessonKey) : undefined;
       if (target?.kind !== "lesson" || typeof lessonKey !== "string") return c.json({ error: "unknownLesson" }, 400);
       if (typeof targetDate !== "string" || !isCalendarDate(targetDate)) return c.json({ error: "invalidTargetDate" }, 400);
 
@@ -183,7 +194,7 @@ export function parentGoalRoutes(deps: AppDeps) {
       if (place === -1) return c.json({ error: "invalidPosition" }, 400);
       queue.splice(place, 0, newGoal(learner.id, target.subjectKey, "lesson", lessonKey, targetDate));
       const row = db.transaction((tx) => saveQueue(tx, queue))[place]!;
-      return c.json(toGoal(row, target, localDate(now())), 201);
+      return c.json(toGoal(row, targets, localDate(now())), 201);
     })
     .post("/goals/spread", async (c) => {
       const learner = learnerFromPath(db, c);
@@ -218,14 +229,64 @@ export function parentGoalRoutes(deps: AppDeps) {
     .post("/goals/:goalId/skip", (c) => {
       const found = goalFromPath(db, c);
       if ("error" in found) return c.json(found, 404);
-      if (found.goal.status !== "active") return c.json({ error: "goalNotActive" }, 409);
+      // A Flagged Goal can be skipped too: that is one way the Parent resolves it.
+      if (!isToBeMet(found.goal.status)) return c.json({ error: "goalNotActive" }, 409);
       return c.json(changeGoal(found, { status: "skipped" }));
+    })
+    .post("/goals/:goalId/retry", (c) => {
+      const found = goalFromPath(db, c);
+      if ("error" in found) return c.json(found, 404);
+      if (found.goal.status !== "flagged") return c.json({ error: "goalNotFlagged" }, 409);
+      // Its Session ended when it was flagged, so the Learner's next tap starts afresh with the Explanation.
+      return c.json(changeGoal(found, { status: "active" }));
+    })
+    .post("/goals/:goalId/met", (c) => {
+      const found = goalFromPath(db, c);
+      if ("error" in found) return c.json(found, 404);
+      if (found.goal.status !== "flagged") return c.json({ error: "goalNotFlagged" }, 409);
+      const content = contentOfGoal(curriculaDir, found.learner, found.goal);
+      if (!content) return c.json({ error: "lessonUnavailable" }, 409);
+      // The Parent taught it themselves: the queue moves on exactly as if the Learner had passed the Quiz.
+      db.transaction((tx) => meetGoal(tx, content.subject, found.goal, localDate(now())));
+      return c.json(goalNow(found));
+    })
+    .post("/goals/:goalId/repoint", async (c) => {
+      const found = goalFromPath(db, c);
+      if ("error" in found) return c.json(found, 404);
+      const { learner, goal } = found;
+      const targets = targetsFor(curriculaDir, learner);
+      if (!isOrphaned(goal, targets)) return c.json({ error: "goalNotOrphaned" }, 409);
+      const { lessonKey } = (await readJsonObject(c)) ?? {};
+      const target = typeof lessonKey === "string" ? targets!.get(lessonKey) : undefined;
+      if (target?.kind !== goal.kind || typeof lessonKey !== "string") return c.json({ error: "unknownLesson" }, 400);
+      const queue = subjectQueue(db, learner.id, target.subjectKey);
+      if (queue.some((g) => g.kind === goal.kind && g.curriculumKey === lessonKey && isToBeMet(g.status))) {
+        return c.json({ error: "lessonHasGoal" }, 409);
+      }
+      // A Goal re-pointed into another Subject joins the end of that Subject's queue.
+      const position = target.subjectKey === goal.subjectKey ? goal.position : Math.max(0, ...queue.map((g) => g.position)) + 1;
+      db.update(goals).set({ curriculumKey: lessonKey, subjectKey: target.subjectKey, position }).where(eq(goals.id, goal.id)).run();
+      return c.json(goalNow(found));
+    })
+    .delete("/goals/:goalId", (c) => {
+      const found = goalFromPath(db, c);
+      if ("error" in found) return c.json(found, 404);
+      // Only an orphaned Goal can be removed (with its Sessions); any other is skipped instead, keeping its history.
+      if (!isOrphaned(found.goal, targetsFor(curriculaDir, found.learner))) return c.json({ error: "goalNotOrphaned" }, 409);
+      db.delete(goals).where(eq(goals.id, found.goal.id)).run();
+      return c.body(null, 204);
     });
 
   /** Saves `change` to one of the Learner's Goals, and answers with the Goal as it now is. */
-  function changeGoal({ learner, goal }: { learner: LearnerRow; goal: GoalRow }, change: Partial<Pick<GoalRow, "targetDate" | "status">>): Goal {
-    const row = db.update(goals).set(change).where(eq(goals.id, goal.id)).returning().get()!;
-    return toGoal(row, targetsFor(curriculaDir, learner).get(row.curriculumKey), localDate(now()));
+  function changeGoal(found: { learner: LearnerRow; goal: GoalRow }, change: Partial<Pick<GoalRow, "targetDate" | "status">>): Goal {
+    db.update(goals).set(change).where(eq(goals.id, found.goal.id)).run();
+    return goalNow(found);
+  }
+
+  /** One of the Learner's Goals as it now is. */
+  function goalNow({ learner, goal }: { learner: LearnerRow; goal: GoalRow }): Goal {
+    const row = db.select().from(goals).where(eq(goals.id, goal.id)).get()!;
+    return toGoal(row, targetsFor(curriculaDir, learner), localDate(now()));
   }
 }
 
@@ -364,8 +425,9 @@ function isCalendarDate(value: string): boolean {
 }
 
 /** A Goal row as the API shows it; a Goal whose Lesson is gone from the Curriculum falls back to its key. */
-function toGoal(row: GoalRow, target: Target | undefined, today: string): Goal {
+function toGoal(row: GoalRow, targets: Map<string, Target> | undefined, today: string): Goal {
   const { id, subjectKey, curriculumKey, kind, targetDate, status } = row;
+  const target = targets?.get(curriculumKey);
   return {
     id,
     subjectKey,
@@ -376,5 +438,6 @@ function toGoal(row: GoalRow, target: Target | undefined, today: string): Goal {
     targetDate,
     status,
     overdue: isOverdue(row, today),
+    orphaned: isOrphaned(row, targets),
   };
 }

@@ -81,6 +81,7 @@ describe("Goals in the Parent area", () => {
       targetDate: "2026-10-20",
       status: "active",
       overdue: false,
+      orphaned: false,
     });
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toEqual([goal]);
   });
