@@ -15,12 +15,13 @@ export function createTestApp(options: { curriculaDir?: string } = {}) {
 
   function client() {
     let cookie = "";
-    return async function request(path: string, body?: unknown) {
+    /** GET without a body, POST with one, unless `method` says otherwise. */
+    return async function request(path: string, body?: unknown, method?: "PUT" | "DELETE") {
       const headers: Record<string, string> = {};
       if (cookie) headers.cookie = cookie;
       if (body !== undefined) headers["content-type"] = "application/json";
       const res = await app.request(path, {
-        method: body === undefined ? "GET" : "POST",
+        method: method ?? (body === undefined ? "GET" : "POST"),
         headers,
         body: body === undefined ? undefined : JSON.stringify(body),
       });

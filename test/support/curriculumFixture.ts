@@ -12,6 +12,11 @@ export function writeFixture(files: Record<string, string>): string {
   return root;
 }
 
+/** `files` moved into the sub-folder `folder`, to build a folder holding several Curricula. */
+export function inFolder(folder: string, files: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(files).map(([path, md]) => [`${folder}/${path}`, md]));
+}
+
 /** A small valid Curriculum: one Subject, one Term, two Units. */
 export const validCurriculum = {
   "curriculum.md": `# Grade 6 Sample

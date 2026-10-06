@@ -1,4 +1,6 @@
-import { MIN_PASSWORD_LENGTH } from "../shared/auth";
+import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
+
+const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 
 /** All UI text, in one place for later translation (English only in v1). */
 export const text = {
@@ -20,10 +22,55 @@ export const text = {
     passwordLabel: "Parent password",
     wrongPassword: "That password isn't right.",
     submit: "Log in",
+    back: "Back",
+  },
+  learnerLogin: {
+    heading: "Who's learning today?",
+    noProfiles: "No Learners yet. Ask your Parent to add you in the Parent area.",
+    parentLink: "Parent area",
+    pinHeading: (name: string) => `Hi ${name}! Enter your PIN.`,
+    pinLabel: "PIN",
+    wrongPin: "That PIN isn't right. Try again.",
+    submit: "Start",
+    back: "Back",
+  },
+  learnerHome: {
+    heading: (name: string) => `Hi ${name}!`,
+    noGoals: "There's nothing to work on yet. Your Parent will set your first Goal soon.",
+    logout: "Log out",
   },
   parentArea: {
     heading: "Parent area",
     logout: "Log out",
+  },
+  learners: {
+    heading: "Learners",
+    none: "No Learners yet. Add one below.",
+    details: (grade: string, curriculumId: string, hasPin: boolean) =>
+      `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""}`,
+    addHeading: "Add a Learner",
+    editHeading: (name: string) => `Edit ${name}`,
+    nameLabel: "Name",
+    gradeLabel: "Grade",
+    curriculumLabel: "Curriculum",
+    noValidCurricula: "Add a valid Curriculum before adding Learners.",
+    pinLabel: "PIN (optional)",
+    pinHint: `${pinDigits}. Leave empty for no PIN.`,
+    newPinLabel: "New PIN",
+    newPinHint: `${pinDigits}. Leave empty to keep the current PIN.`,
+    removePin: "Remove the PIN",
+    add: "Add Learner",
+    save: "Save",
+    cancel: "Cancel",
+    edit: "Edit",
+    remove: "Remove",
+    confirmRemove: (name: string) => `Remove ${name}? Their progress will be deleted too.`,
+    errors: {
+      nameRequired: "Enter a name.",
+      gradeRequired: "Enter a grade.",
+      unknownCurriculum: "Choose a valid Curriculum.",
+      invalidPin: `A PIN is ${pinDigits}.`,
+    } as Record<string, string>,
   },
   curricula: {
     heading: "Curricula",

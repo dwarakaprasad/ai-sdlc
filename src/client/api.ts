@@ -1,4 +1,4 @@
-import type { CurriculumSummary, ParentStatus } from "../shared/api";
+import type { CurriculumSummary, Learner, LearnerInput, LoggedInLearner, LearnerProfile, ParentStatus } from "../shared/api";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -6,13 +6,15 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-async function post(path: string, body: unknown): Promise<Response> {
+async function send(path: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<Response> {
   return fetch(path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    method,
+    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 }
+
+const post = (path: string, body: unknown) => send(path, "POST", body);
 
 export const api = {
   parentStatus: () => get<ParentStatus>("/api/parent/status"),
@@ -20,4 +22,18 @@ export const api = {
   setupParent: (password: string) => post("/api/parent/setup", { password }),
   loginParent: (password: string) => post("/api/parent/login", { password }),
   logoutParent: () => post("/api/parent/logout", {}),
+  learners: () => get<Learner[]>("/api/parent/learners"),
+  createLearner: (input: LearnerInput) => post("/api/parent/learners", input),
+  editLearner: (id: number, input: LearnerInput) => send(`/api/parent/learners/${id}`, "PUT", input),
+  removeLearner: (id: number) => send(`/api/parent/learners/${id}`, "DELETE"),
+  learnerProfiles: () => get<LearnerProfile[]>("/api/learner/profiles"),
+  /** The logged-in Learner, or undefined when no Learner is logged in. */
+  learnerMe: async () => {
+    const res = await fetch("/api/learner/me");
+    if (res.status === 401 || res.status === 403) return undefined;
+    if (!res.ok) throw new Error(`/api/learner/me: ${res.status}`);
+    return (await res.json()) as LoggedInLearner;
+  },
+  loginLearner: (learnerId: number, pin?: string) => post("/api/learner/login", { learnerId, pin }),
+  logoutLearner: () => post("/api/learner/logout", {}),
 };
