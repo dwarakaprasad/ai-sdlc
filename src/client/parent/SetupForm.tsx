@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { MIN_PASSWORD_LENGTH } from "../../shared/auth";
 import { api } from "../api";
+import { Button, Field, Tag } from "../components/ui";
+import { Wordmark } from "../components/Wordmark";
 import { text } from "../text";
 
+/** First-time setup: the Parent sets their password. A split screen like the profile picker, with the denser controls. */
 export function SetupForm({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -18,20 +21,27 @@ export function SetupForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form onSubmit={submit}>
-      <h1>{text.setup.heading}</h1>
-      <p>{text.setup.intro}</p>
-      <label>
-        {text.setup.passwordLabel}
-        <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      </label>
-      <label>
-        {text.setup.confirmLabel}
-        <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-      </label>
-      <span className="hint">{text.setup.hint}</span>
-      {error && <p className="error">{error}</p>}
-      <button type="submit">{text.setup.submit}</button>
-    </form>
+    <main className="split dense screen-enter">
+      <section className="split-start">
+        <Wordmark />
+        <Tag>{text.parentArea.heading}</Tag>
+        <h1 className="display">{text.setup.heading}</h1>
+        <p className="lead">{text.setup.intro}</p>
+      </section>
+      <form className="split-end" onSubmit={submit}>
+        <Field label={text.setup.passwordLabel}>
+          <input type="password" autoComplete="new-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <Field label={text.setup.confirmLabel} hint={text.setup.hint}>
+          <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+        </Field>
+        {error && (
+          <p className="text-warm" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit">{text.setup.submit}</Button>
+      </form>
+    </main>
   );
 }

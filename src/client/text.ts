@@ -401,13 +401,14 @@ export const text = {
   usage: {
     heading: "Token usage",
     none: "No tokens used yet.",
-    day: (date: string, calls: number, input: number, output: number) =>
-      `${date}: ${input.toLocaleString()} in, ${output.toLocaleString()} out (${calls} ${calls === 1 ? "call" : "calls"})`,
+    columns: { date: "Day", input: "Tokens in", output: "Tokens out", calls: "Calls" },
+    date: formatDate,
   },
   curricula: {
     heading: "Curricula",
     none: "No Curriculum folders found. Add one to the curricula folder (see docs/curriculum-format.md).",
     details: (district: string, grade: string, schoolYear: string) => `${district} · Grade ${grade} · ${schoolYear}`,
+    errorCount: (count: number) => `${count} ${count === 1 ? "error" : "errors"}`,
     subject: (name: string, lessons: number) => `${name}: ${lessons} ${lessons === 1 ? "Lesson" : "Lessons"}`,
     invalid: (count: number) =>
       `This Curriculum has ${count} ${count === 1 ? "error" : "errors"} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
