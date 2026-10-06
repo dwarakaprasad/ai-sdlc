@@ -64,6 +64,13 @@
       "when": 1791318598555,
       "tag": "0008_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791324686634,
+      "tag": "0009_cap_refusals",
+      "breakpoints": true
     }
   ]
 }

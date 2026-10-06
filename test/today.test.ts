@@ -96,6 +96,7 @@ describe("Today, the Learner's home data", () => {
         },
       ],
       goalsMet: 0,
+      streak: { days: 0, week: expect.any(Array) },
     });
   });
 

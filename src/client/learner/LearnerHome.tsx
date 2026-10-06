@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { GoalCard, LearnerToday, LoggedInLearner, SubjectToday } from "../../shared/api";
 import { api } from "../api";
 import { Avatar } from "../components/Avatar";
+import { StreakChip, StreakWeek } from "../components/Streak";
 import { ArrowIcon, ClockIcon, ParentIcon, StarIcon } from "../components/icons";
 import { TopBar } from "../components/TopBar";
 import { TutorMark } from "../components/TutorMark";
@@ -36,9 +37,12 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
             : []),
         ]}
         end={
-          <button type="button" className="switch-profile" aria-label={text.learnerNav.switchProfile} onClick={() => api.logoutLearner().then(onLogout)}>
-            <Avatar {...learner} size={36} />
-          </button>
+          <>
+            {today && <StreakChip days={today.streak.days} />}
+            <button type="button" className="switch-profile" aria-label={text.learnerNav.switchProfile} onClick={() => api.logoutLearner().then(onLogout)}>
+              <Avatar {...learner} size={36} />
+            </button>
+          </>
         }
       />
       {pathSubjectKey !== undefined ? (
@@ -85,6 +89,7 @@ function Today({ today, onStart, onOpenPath }: { today: LearnerToday; onStart: (
           </Card>
         )}
         <Card className="achievements">
+          <StreakWeek streak={today.streak} />
           <div className="achievement">
             <span className="eyebrow">{text.learnerHome.goalsMet}</span>
             <strong className="achievement-goals">

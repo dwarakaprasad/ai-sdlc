@@ -18,6 +18,7 @@ import type {
 import type { AppDeps } from "./deps";
 import { parseId, readJsonObject } from "./http";
 import { learnerFromPath, type LearnerRow } from "./learners";
+import { streakOf } from "./streak";
 import { localDate } from "./usage";
 import type { Db, DbReader, DbWriter } from "./db";
 import { goals } from "./db/schema";
@@ -187,7 +188,7 @@ export function learnerToday(deps: AppDeps, learner: LearnerRow): LearnerToday {
     (a, b) =>
       rank(a) - rank(b) || (a.card && b.card ? a.card.targetDate.localeCompare(b.card.targetDate) : 0) || a.subjectName.localeCompare(b.subjectName),
   );
-  return { subjects, goalsMet: learnerGoals.filter((goal) => goal.status === "met").length };
+  return { subjects, goalsMet: learnerGoals.filter((goal) => goal.status === "met").length, streak: streakOf(deps.db, learner.id, deps.now()) };
 }
 
 function toGoalCard({ id, kind, subjectName, title, targetDate, overdue }: Goal): GoalCard {

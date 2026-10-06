@@ -8,6 +8,7 @@ import {
   type GoalKind,
   type GoalStatus,
   type PathState,
+  type StreakDayState,
 } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
@@ -23,6 +24,12 @@ const LESSON_UNAVAILABLE = "This Lesson can't be taught just now. Ask your Paren
 function formatDate(date: string): string {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+/** A YYYY-MM-DD date's weekday, e.g. "Tuesday"; a local day, like formatDate. */
+function weekday(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "long" });
 }
 
 /**
@@ -140,6 +147,18 @@ export const text = {
     ring: (met: number, total: number) => `${met} of ${total} done this Term`,
     ringOf: (total: number) => `of ${total}`,
     noPath: "Your Learning Path shows up here once your Parent sets a Goal in this Subject.",
+  },
+  /** Never a lost-streak message: at 0 the Learner is invited to start one. */
+  streak: {
+    heading: "Streak",
+    days: (days: number) => `${days} ${days === 1 ? "day" : "days"}`,
+    chipLabel: (days: number) => `Streak: ${days} ${days === 1 ? "day" : "days"}`,
+    startNew: "Start a new streak today",
+    weekLabel: "The last seven days",
+    weekendNote: "Weekends count, but never break it.",
+    /** A day in the week strip: its weekday's initial, and in full for a screen reader. */
+    weekdayInitial: (date: string) => weekday(date).charAt(0),
+    day: (date: string, state: StreakDayState) => `${weekday(date)}: ${{ worked: "worked", rest: "rest day", missed: "no work", today: "today, not yet" }[state]}`,
   },
   learnerNav: {
     today: "Today",
@@ -310,8 +329,8 @@ export const text = {
   learners: {
     heading: "Learners",
     none: "No Learners yet. Add one below.",
-    details: (grade: string, curriculumId: string, hasPin: boolean) =>
-      `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""}`,
+    details: (grade: string, curriculumId: string, hasPin: boolean, streak: number) =>
+      `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""} · ${streak}-day streak`,
     grade: (grade: string) => `Grade ${grade}`,
     needsAttention: (count: number) => `${count} ${count === 1 ? "Goal needs" : "Goals need"} attention`,
     views: { goals: "Goals", progress: "Progress" },
@@ -370,6 +389,7 @@ export const text = {
   },
   progress: {
     summary: { met: "Met", overdue: "Overdue", flagged: "Flagged", orphaned: "Missing Lesson" },
+    streak: "Streak (days)",
     summaryLabel: "Goals at a glance",
     noGoals: "No Goals yet, so no progress to show.",
     noSessions: "No Sessions yet.",

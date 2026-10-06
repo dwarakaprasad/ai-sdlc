@@ -120,7 +120,7 @@ A Subject's Lessons and Unit Tests for the current Term, in Curriculum order, ea
 _Avoid_: Map, roadmap, journey
 
 **Streak**:
-The run of consecutive days on which a Learner sent the Tutor a message or answered a Quiz question; Saturdays and Sundays add to it but never break it. Worked out when shown, never stored.
+The run of consecutive days on which a Learner sent the Tutor a message, answered a Quiz question, or was turned away by the household's daily token cap; Saturdays and Sundays add to it but never break it, and today doesn't break it before it counts. Worked out when shown, never stored.
 _Avoid_: Chain, combo
 
 **Avatar**:
