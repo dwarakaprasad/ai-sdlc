@@ -20,3 +20,5 @@ export const CheckIcon = (p: IconProps) => <Icon {...p}><path d="M5 12.5l4.5 4.5
 export const CloseIcon = (p: IconProps) => <Icon {...p}><path d="M6 6l12 12M18 6L6 18" /></Icon>;
 export const SendIcon = (p: IconProps) => <Icon {...p}><path d="M4.5 12h14M13 6.5l5.5 5.5-5.5 5.5" /></Icon>;
 export const SparkleIcon = (p: IconProps) => <Icon {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" /></Icon>;
+export const StarIcon = (p: IconProps) => <Icon {...p}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></Icon>;
+export const ParentIcon = (p: IconProps) => <Icon {...p}><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="10" r="2.2" /><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8M14.5 15c2.6-.4 4.9.9 5.5 3.6" /></Icon>;

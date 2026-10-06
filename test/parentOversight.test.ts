@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Goal, GoalCard, GoalProgress, SessionTranscript } from "../src/shared/api";
 import { validCurriculum } from "./support/curriculumFixture";
 import { household, ratios } from "./support/household";
+import { goalCards } from "./support/today";
 
 const equivalentRatios = "math/term-1/unit-1/lesson-2";
 const dividingFractions = "math/term-1/unit-2/lesson-1";
@@ -60,7 +61,7 @@ async function oversight() {
   };
   const progress = async (): Promise<GoalProgress[]> => (await parent(`/api/parent/learners/${ada}/progress`)).json();
   const goalAction = (goalId: number, action: string, body: unknown = {}) => parent(`/api/parent/learners/${ada}/goals/${goalId}/${action}`, body);
-  const cards = async (): Promise<GoalCard[]> => (await learner("/api/learner/goals")).json();
+  const cards = async (): Promise<GoalCard[]> => goalCards(learner);
   const setGoal = async (lessonKey: string, targetDate = "2026-10-20") =>
     (await (await parent(`/api/parent/learners/${ada}/goals`, { lessonKey, targetDate })).json()) as Goal;
 

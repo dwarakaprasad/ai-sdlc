@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import type { GoalCard, QuizScore, TutorSession } from "../../shared/api";
+import type { LearnerToday, QuizScore, TutorSession } from "../../shared/api";
 import { api } from "../api";
-import { ArrowIcon } from "../components/icons";
+import { ArrowIcon, StarIcon } from "../components/icons";
 import { Confetti } from "../components/Confetti";
 import { Button } from "../components/ui";
 import { text } from "../text";
 
 /**
- * The Goal-met celebration: a drawn check and light confetti, the score, and the Subject's next Goal ready to start.
- * Meeting the Goal has already moved the Subject's queue on, so its next Goal is whatever the home screen now shows for it.
+ * The Goal-met celebration: a drawn check and light confetti, the score, the Learner's Goals met and the Subject's Term
+ * progress, and the Subject's next Goal ready to start. Meeting the Goal has already moved the Subject's queue on, so these
+ * come from the home data as it now is.
  */
 export function GoalMet({
   session,
@@ -21,11 +22,10 @@ export function GoalMet({
   onHome: () => void;
   onOpenGoal: (goalId: number) => void;
 }) {
-  const [next, setNext] = useState<GoalCard | null>();
-  useEffect(
-    () => void api.goalCards().then((cards) => setNext(cards.find((c) => c.subjectName === session.subjectName) ?? null), () => setNext(null)),
-    [session.id],
-  );
+  const [today, setToday] = useState<LearnerToday>();
+  useEffect(() => void api.today().then(setToday, () => undefined), [session.id]);
+  const subject = today?.subjects.find((s) => s.subjectKey === session.subjectKey);
+  const next = subject?.card;
 
   return (
     <main className="goal-met screen-enter">
@@ -38,6 +38,22 @@ export function GoalMet({
       <span className="eyebrow">{text.goalMet.eyebrow(session.subjectName)}</span>
       <h1 className="display goal-met-title">{text.goalTitle(session.kind, session.title)}</h1>
       <p className="lead goal-met-score">{text.goalMet.score(score.correct, score.total, text.goalMet.scoreLine[session.kind])}</p>
+      {today && (
+        <dl className="goal-met-stats">
+          <div>
+            <dt>{text.goalMet.goalsMet}</dt>
+            <dd className="goal-met-goals">
+              <StarIcon size={18} /> {today.goalsMet}
+            </dd>
+          </div>
+          {subject?.term && (
+            <div>
+              <dt>{text.goalMet.thisTerm(session.subjectName, subject.term.termName)}</dt>
+              <dd>{text.learnerHome.termProgress(subject.term.met, subject.term.total)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
       {next && (
         <article className="up-next">
           <div>

@@ -6,7 +6,7 @@ import type {
   CurriculumSummary,
   DailyUsage,
   Goal,
-  GoalCard,
+  LearnerToday,
   GoalInput,
   GoalOrder,
   GoalProgress,
@@ -84,7 +84,7 @@ export const api = {
   logoutLearner: () => post("/api/learner/logout", {}),
   /** Saves the logged-in Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
   pickAvatar: (choice: { avatar: AvatarId; color: AccentColor }) => send("/api/learner/me/avatar", "PUT", choice),
-  goalCards: () => get<GoalCard[]>("/api/learner/goals"),
+  today: () => get<LearnerToday>("/api/learner/goals"),
   teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
   saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),
   /**

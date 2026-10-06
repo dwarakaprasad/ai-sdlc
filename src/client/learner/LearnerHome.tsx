@@ -1,32 +1,31 @@
 import { useEffect, useState } from "react";
-import type { GoalCard, LoggedInLearner } from "../../shared/api";
+import type { GoalCard, LearnerToday, LoggedInLearner, SubjectToday } from "../../shared/api";
 import { api } from "../api";
-import { ArrowIcon, ClockIcon } from "../components/icons";
+import { Avatar } from "../components/Avatar";
+import { ArrowIcon, ClockIcon, ParentIcon, StarIcon } from "../components/icons";
 import { TopBar } from "../components/TopBar";
 import { TutorMark } from "../components/TutorMark";
-import { Avatar } from "../components/Avatar";
-import { Button, Card, Tag } from "../components/ui";
+import { Button, Card, Meter, Tag } from "../components/ui";
 import { text } from "../text";
 import { SessionChat } from "./SessionChat";
 
+/** The logged-in Learner's app: Today, and a Session once they start a Goal. */
 export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout: () => void }) {
-  const [cards, setCards] = useState<GoalCard[]>();
+  const [today, setToday] = useState<LearnerToday>();
   const [error, setError] = useState<string>();
   const [openGoal, setOpenGoal] = useState<number>();
-  const loadCards = () => void api.goalCards().then(setCards, () => setError(text.genericError));
-  useEffect(loadCards, []);
+  const loadToday = () => void api.today().then(setToday, () => setError(text.genericError));
+  useEffect(loadToday, []);
 
-  // A Session may have changed the Goals (a Flagged Goal leaves the list), so reload them on the way back.
   if (openGoal !== undefined) {
-    // Keyed by the Goal, so moving straight on to the Up next Goal starts its Session afresh.
-    return <SessionChat key={openGoal} goalId={openGoal} onBack={() => (setOpenGoal(undefined), loadCards())} onOpenGoal={setOpenGoal} />;
+    // Keyed by the Goal, so moving straight on to the Up next Goal starts its Session afresh. A Session may have changed
+    // the Goals (one met, or handed to the Parent), so Today reloads on the way back.
+    return <SessionChat key={openGoal} goalId={openGoal} onBack={() => (setOpenGoal(undefined), loadToday())} onOpenGoal={setOpenGoal} />;
   }
-  // The cards come earliest Target Date first, so the first is the one to continue (an overdue Goal comes first).
-  const [next, ...others] = cards ?? [];
   return (
     <div className="learner-app">
       <TopBar
-        nav={[{ label: text.learnerNav.today, current: true, onSelect: loadCards }]}
+        nav={[{ label: text.learnerNav.today, current: true, onSelect: loadToday }]}
         end={
           <button type="button" className="switch-profile" aria-label={text.learnerNav.switchProfile} onClick={() => api.logoutLearner().then(onLogout)}>
             <Avatar {...learner} size={36} />
@@ -36,40 +35,57 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
       <main className="page screen-enter">
         <h1 className="h1">{text.learnerHome.heading(learner.name)}</h1>
         {error && <p className="text-warm">{error}</p>}
-        {!cards && !error && <p className="muted">{text.loading}</p>}
-        {cards?.length === 0 && (
-          <Card className="home-empty">
-            <TutorMark size={56} mood="resting" />
-            <p>{text.learnerHome.noGoals}</p>
-          </Card>
-        )}
-        {next && <ContinueCard card={next} onStart={() => setOpenGoal(next.id)} />}
-        {others.length > 0 && (
-          <>
-            <h2 className="h3 home-section">{text.learnerHome.moreGoals}</h2>
-            <ul className="subject-rows">
-              {others.map((card) => (
-                <li key={card.id} className="subject-row">
-                  <span className="subject-row-name">{card.subjectName}</span>
-                  <span className="subject-row-goal">
-                    {text.goalTitle(card.kind, card.title)} {card.overdue && <Tag tone="warm">{text.learnerHome.catchUpTag}</Tag>}
-                    {!card.overdue && <small className="muted">{text.learnerHome.target(card.targetDate)}</small>}
-                  </span>
-                  <Button kind="outline" onClick={() => setOpenGoal(card.id)}>
-                    {text.learnerHome.start}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+        {!today && !error && <p className="muted">{text.loading}</p>}
+        {today && <Today today={today} onStart={setOpenGoal} />}
       </main>
     </div>
   );
 }
 
+/** Today: the Goal to continue, what the Learner has achieved, and every Subject with its own Goal to start. */
+function Today({ today, onStart }: { today: LearnerToday; onStart: (goalId: number) => void }) {
+  if (today.subjects.length === 0) {
+    return (
+      <Card className="home-empty">
+        <TutorMark size={56} mood="resting" />
+        <p>{text.learnerHome.noGoals}</p>
+      </Card>
+    );
+  }
+  // The Subjects come earliest Target Date first, so the first is the one to continue (an overdue Goal comes first).
+  const [first] = today.subjects;
+  return (
+    <>
+      <div className="home-grid">
+        {first?.card ? (
+          <ContinueCard subject={first} card={first.card} onStart={() => onStart(first.card!.id)} />
+        ) : (
+          <Card className="home-empty">
+            <TutorMark size={56} mood="resting" />
+            <p>{text.learnerHome.nothingNow}</p>
+          </Card>
+        )}
+        <Card className="achievements">
+          <div className="achievement">
+            <span className="eyebrow">{text.learnerHome.goalsMet}</span>
+            <strong className="achievement-goals">
+              <StarIcon size={18} /> {today.goalsMet}
+            </strong>
+          </div>
+        </Card>
+      </div>
+      <h2 className="h3 home-section">{text.learnerHome.allSubjects}</h2>
+      <ul className="subject-rows">
+        {today.subjects.map((subject) => (
+          <SubjectRow key={subject.subjectKey} subject={subject} onStart={onStart} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
 /** The Goal to do next, with the Tutor beside it and one button to start. */
-function ContinueCard({ card, onStart }: { card: GoalCard; onStart: () => void }) {
+function ContinueCard({ subject, card, onStart }: { subject: SubjectToday; card: GoalCard; onStart: () => void }) {
   return (
     <article className="continue-card">
       <div className="continue-art">
@@ -77,7 +93,7 @@ function ContinueCard({ card, onStart }: { card: GoalCard; onStart: () => void }
         <div className="continue-shape" />
       </div>
       <div className="continue-body">
-        <span className="eyebrow">{card.subjectName}</span>
+        <span className="eyebrow">{text.learnerHome.continueEyebrow(subject.subjectName, subject.term?.termName)}</span>
         <h2 className="h2">{text.goalTitle(card.kind, card.title)}</h2>
         {/* Gentle wording for the Learner; the Parent sees "Overdue" plainly. */}
         {card.overdue ? (
@@ -94,5 +110,43 @@ function ContinueCard({ card, onStart }: { card: GoalCard; onStart: () => void }
         </div>
       </div>
     </article>
+  );
+}
+
+/** One Subject: its current Goal and a Start button, or why there's nothing to start; and how far through its Term it is. */
+function SubjectRow({ subject, onStart }: { subject: SubjectToday; onStart: (goalId: number) => void }) {
+  const { card, term } = subject;
+  return (
+    <li className={subject.withParent ? "subject-row with-parent" : "subject-row"}>
+      <span className="subject-row-name">{subject.subjectName}</span>
+      <span className="subject-row-goal">
+        {card ? (
+          <>
+            {text.goalTitle(card.kind, card.title)} {card.overdue && <Tag tone="warm">{text.learnerHome.catchUpTag}</Tag>}
+          </>
+        ) : subject.withParent ? (
+          <span className="subject-row-parent">
+            <ParentIcon size={18} /> {text.learnerHome.withParent}
+          </span>
+        ) : (
+          <span className="muted">{text.learnerHome.allDone}</span>
+        )}
+      </span>
+      {term ? (
+        <span className="subject-row-meter">
+          <Meter value={term.met} total={term.total} label={text.learnerHome.termProgressLabel(subject.subjectName, term.termName, term.met, term.total)} />
+          <small>{text.learnerHome.termProgress(term.met, term.total)}</small>
+        </span>
+      ) : (
+        <span className="subject-row-meter" />
+      )}
+      {card ? (
+        <Button kind="outline" onClick={() => onStart(card.id)}>
+          {text.learnerHome.start}
+        </Button>
+      ) : (
+        <span />
+      )}
+    </li>
   );
 }

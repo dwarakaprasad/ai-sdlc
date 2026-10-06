@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GUARDRAILS } from "../src/tutor";
 import { household } from "./support/household";
+import { goalCards } from "./support/today";
 
 describe("Starting a Tutor Session", () => {
   it("starts a Session on a Goal and streams the Explanation", async () => {
@@ -14,6 +15,7 @@ describe("Starting a Tutor Session", () => {
     expect(session).toEqual({
       id: expect.any(Number),
       kind: "lesson",
+      subjectKey: "math",
       subjectName: "Math",
       title: "Understanding ratios",
       learningObjectives: ["Write a ratio to describe two quantities.", 'Use ratio language such as "for every".'],
@@ -138,7 +140,7 @@ describe("The Understanding Check", () => {
     expect(last.reply.join("")).toBe("You worked really hard today. We'll come back to this with your Parent.");
     expect(last.done).toEqual({ step: "ended" });
     expect(await parentGoals()).toMatchObject([{ status: "flagged" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    expect(await goalCards(learner)).toEqual([]);
     expect((await openSession()).status).toBe(409);
     expect((await turn(sessionId, "hello?")).status).toBe(409);
   });
@@ -194,12 +196,13 @@ describe("Resuming a Session", () => {
     // Leaving: a fresh browser logs in as the same Learner and taps the card again.
     const again = client();
     await again("/api/learner/login", { learnerId: ada });
-    const [card] = await (await again("/api/learner/goals")).json();
-    const resumed = await (await again(`/api/learner/goals/${card.id}/session`, {})).json();
+    const [card] = await goalCards(again);
+    const resumed = await (await again(`/api/learner/goals/${card!.id}/session`, {})).json();
 
     expect(resumed).toEqual({
       id: sessionId,
       kind: "lesson",
+      subjectKey: "math",
       subjectName: "Math",
       title: "Understanding ratios",
       learningObjectives: ["Write a ratio to describe two quantities.", 'Use ratio language such as "for every".'],
