@@ -1,4 +1,7 @@
-/* The Parent screens that follow prototype B in its denser variant: Learners, Goals, progress and transcripts. Tokens only. */
+/*
+ * The Parent screens, following prototype B in its denser variant: setup and login, Learners, Goals, progress and transcripts,
+ * the Curricula, the settings and usage. Tokens only.
+ */
 
 .parent-app {
   min-height: 100vh;
@@ -6,7 +9,18 @@
   flex-direction: column;
 }
 .parent-page {
-  padding: var(--s-6) var(--s-7);
+  padding: var(--s-6) var(--s-7) var(--s-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.parent-page p {
+  margin: 0;
+}
+
+/* Setup and login: the profile picker's split screen, labelled as the Parent's */
+.split-start > .tag {
+  align-self: flex-start;
 }
 
 /* Learners: the list beside the one picked */
@@ -388,6 +402,108 @@
   gap: var(--s-2);
 }
 
+/* Curricula: a card each, an invalid one with its errors */
+.curriculum-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: var(--s-3);
+  align-items: start;
+}
+.curriculum-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-4);
+}
+.curriculum-subjects {
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.curriculum-subjects li {
+  padding: var(--s-1) 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+.curriculum-invalid {
+  grid-column: 1 / -1;
+  border-color: var(--warm-line);
+}
+.curriculum-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.curriculum-errors {
+  margin: var(--s-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--t-small);
+}
+.curriculum-errors li {
+  padding: var(--s-1) 0;
+  border-top: 1px solid var(--line);
+}
+.curriculum-errors code {
+  color: var(--warm-ink);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* Settings: a card per form */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+  gap: var(--s-4);
+  align-items: start;
+}
+.settings-card {
+  padding: var(--s-4) var(--s-5) var(--s-5);
+}
+.settings-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+/* Usage: a table, a row per day */
+.usage-wrap {
+  overflow-x: auto;
+}
+.usage-table {
+  width: 100%;
+  max-width: 44rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.usage-table th,
+.usage-table td {
+  padding: var(--s-2) var(--s-4);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.usage-table :is(th, td):first-child {
+  text-align: left;
+}
+.usage-table thead th {
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.usage-table tbody :is(th, td) {
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+.usage-table tbody th {
+  font-weight: 700;
+}
+
 @media (max-width: 1000px) {
   .parent-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -416,7 +532,9 @@
     grid-template-columns: 1fr 1fr;
   }
   .goal-forms,
-  .form-grid {
+  .form-grid,
+  .curriculum-list,
+  .settings-grid {
     grid-template-columns: 1fr;
   }
   .top-bar .tag {

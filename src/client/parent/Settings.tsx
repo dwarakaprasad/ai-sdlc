@@ -3,13 +3,33 @@ import type { LlmSettings, TeachingSettings } from "../../shared/api";
 import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT } from "../../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../../shared/llm";
 import { api } from "../api";
+import { Button, Card, Field } from "../components/ui";
 import { text } from "../text";
+
+type Message = { text: string; error?: boolean };
+
+/** A form's last outcome: "Saved." or what went wrong. */
+function Status({ message }: { message?: Message }) {
+  if (!message) return null;
+  return message.error ? (
+    <p className="text-warm" role="alert">
+      {message.text}
+    </p>
+  ) : (
+    <p className="muted" role="status">
+      {message.text}
+    </p>
+  );
+}
+
+/** Until a form's settings arrive: loading, or the error that stopped them. */
+const NotLoaded = ({ message }: { message?: Message }) => (message ? <Status message={message} /> : <p className="muted">{text.loading}</p>);
 
 export function LlmSettingsForm() {
   const [saved, setSaved] = useState<LlmSettings>();
   const [provider, setProvider] = useState<string>("");
   const [model, setModel] = useState("");
-  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  const [message, setMessage] = useState<Message>();
   const [testing, setTesting] = useState(false);
 
   const load = (settings: LlmSettings) => (setSaved(settings), setProvider(settings.provider), setModel(settings.model));
@@ -44,16 +64,15 @@ export function LlmSettingsForm() {
     }
   }
 
-  if (!saved) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  if (!saved) return <NotLoaded message={message} />;
   const info = isProviderId(provider) ? providerInfo(provider) : undefined;
   const changed = provider !== saved.provider || model.trim() !== saved.model;
   return (
-    <section>
-      <h2>{text.llmSettings.heading}</h2>
-      <p className="hint">{text.llmSettings.intro}</p>
-      <form className="card" onSubmit={save}>
-        <label>
-          {text.llmSettings.providerLabel}
+    <Card className="settings-card">
+      <form onSubmit={save}>
+        <h2 className="h3">{text.llmSettings.heading}</h2>
+        <p className="muted">{text.llmSettings.intro}</p>
+        <Field label={text.llmSettings.providerLabel}>
           <select value={provider} onChange={(e) => changeProvider(e.target.value)}>
             {PROVIDERS.map((p) => (
               <option key={p.id} value={p.id}>
@@ -61,27 +80,25 @@ export function LlmSettingsForm() {
               </option>
             ))}
           </select>
-        </label>
-        <label>
-          {text.llmSettings.modelLabel}
+        </Field>
+        <Field label={text.llmSettings.modelLabel} hint={info && text.llmSettings.keyHint(info.envVar)}>
           <input list="llm-models" value={model} onChange={(e) => (setModel(e.target.value), setMessage(undefined))} />
-          <datalist id="llm-models">
-            {info?.models.map((m) => <option key={m} value={m} />)}
-          </datalist>
-        </label>
-        {info && <span className="hint">{text.llmSettings.keyHint(info.envVar)}</span>}
-        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
-        <div className="actions">
-          <button type="submit" disabled={!changed}>
+        </Field>
+        <datalist id="llm-models">
+          {info?.models.map((m) => <option key={m} value={m} />)}
+        </datalist>
+        <Status message={message} />
+        <div className="form-actions">
+          <Button type="submit" disabled={!changed}>
             {text.llmSettings.save}
-          </button>
+          </Button>
           {/* Tests the saved settings, so it waits until changes are saved. */}
-          <button type="button" disabled={changed || testing} onClick={() => void test()}>
+          <Button kind="outline" disabled={changed || testing} onClick={() => void test()}>
             {testing ? text.llmSettings.testing : text.llmSettings.test}
-          </button>
+          </Button>
         </div>
       </form>
-    </section>
+    </Card>
   );
 }
 
@@ -100,7 +117,7 @@ const TEACHING_FIELDS: { name: keyof TeachingSettings; label: string; hint: stri
 
 export function TeachingSettingsForm() {
   const [values, setValues] = useState<Record<keyof TeachingSettings, string>>();
-  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  const [message, setMessage] = useState<Message>();
   useEffect(
     () =>
       void api.teachingSettings().then(
@@ -123,14 +140,13 @@ export function TeachingSettingsForm() {
     setMessage({ text: text.teachingSettings.errors[error] ?? text.genericError, error: true });
   }
 
-  if (values === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  if (values === undefined) return <NotLoaded message={message} />;
   return (
-    <section>
-      <h2>{text.teachingSettings.heading}</h2>
-      <form className="card" onSubmit={save}>
+    <Card className="settings-card">
+      <form onSubmit={save}>
+        <h2 className="h3">{text.teachingSettings.heading}</h2>
         {TEACHING_FIELDS.map(({ name, label, hint, min, max }) => (
-          <label key={name}>
-            {label}
+          <Field key={name} label={label} hint={hint}>
             <input
               type="number"
               min={min}
@@ -139,20 +155,21 @@ export function TeachingSettingsForm() {
               value={values[name]}
               onChange={(e) => (setValues({ ...values, [name]: e.target.value }), setMessage(undefined))}
             />
-            <span className="hint">{hint}</span>
-          </label>
+          </Field>
         ))}
-        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
-        <button type="submit">{text.teachingSettings.save}</button>
+        <Status message={message} />
+        <div className="form-actions">
+          <Button type="submit">{text.teachingSettings.save}</Button>
+        </div>
       </form>
-    </section>
+    </Card>
   );
 }
 
 /** The daily token cap (empty for none) and when the Learner is prompted to take a break. */
 export function LimitSettingsForm() {
   const [values, setValues] = useState<{ dailyTokenCap: string; breakMinutes: string }>();
-  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  const [message, setMessage] = useState<Message>();
   useEffect(
     () =>
       void api.limitSettings().then(
@@ -174,24 +191,22 @@ export function LimitSettingsForm() {
 
   const change = (name: keyof NonNullable<typeof values>) => (e: { target: { value: string } }) =>
     values && (setValues({ ...values, [name]: e.target.value }), setMessage(undefined));
-  if (values === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  if (values === undefined) return <NotLoaded message={message} />;
   return (
-    <section>
-      <h2>{text.limitSettings.heading}</h2>
-      <form className="card" onSubmit={save}>
-        <label>
-          {text.limitSettings.dailyTokenCapLabel}
+    <Card className="settings-card">
+      <form onSubmit={save}>
+        <h2 className="h3">{text.limitSettings.heading}</h2>
+        <Field label={text.limitSettings.dailyTokenCapLabel} hint={text.limitSettings.dailyTokenCapHint}>
           <input type="number" min={1} step={1} value={values.dailyTokenCap} onChange={change("dailyTokenCap")} />
-          <span className="hint">{text.limitSettings.dailyTokenCapHint}</span>
-        </label>
-        <label>
-          {text.limitSettings.breakMinutesLabel}
+        </Field>
+        <Field label={text.limitSettings.breakMinutesLabel} hint={text.limitSettings.breakMinutesHint}>
           <input type="number" min={1} max={MAX_BREAK_MINUTES} step={1} value={values.breakMinutes} onChange={change("breakMinutes")} />
-          <span className="hint">{text.limitSettings.breakMinutesHint}</span>
-        </label>
-        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
-        <button type="submit">{text.limitSettings.save}</button>
+        </Field>
+        <Status message={message} />
+        <div className="form-actions">
+          <Button type="submit">{text.limitSettings.save}</Button>
+        </div>
       </form>
-    </section>
+    </Card>
   );
 }

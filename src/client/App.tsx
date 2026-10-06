@@ -28,16 +28,13 @@ export function App() {
   };
   useEffect(() => void refresh(), []);
 
-  // Re-skinned screens lay out their own page; the rest still sit in the pre-redesign column until their ticket.
-  let content;
-  if (error) content = <p className="error">{error}</p>;
-  else if (!state) content = <p>{text.loading}</p>;
+  if (error) return <main className="page text-warm">{error}</main>;
+  if (!state) return <main className="page muted">{text.loading}</main>;
   // A Learner picks their Avatar at their first login, before their first Today.
-  else if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} onSwitchProfile={refresh} />;
-  else if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
-  else if (!state.parent.passwordSet) content = <SetupForm onDone={refresh} />;
-  else if (state.parent.loggedIn) return <ParentArea onLogout={refresh} />;
-  else if (parentLogin) content = <LoginForm onDone={refresh} onBack={() => setParentLogin(false)} />;
-  else return <LearnerLogin onDone={refresh} onParent={() => setParentLogin(true)} />;
-  return <main className="legacy">{content}</main>;
+  if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} onSwitchProfile={refresh} />;
+  if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
+  if (!state.parent.passwordSet) return <SetupForm onDone={refresh} />;
+  if (state.parent.loggedIn) return <ParentArea onLogout={refresh} />;
+  if (parentLogin) return <LoginForm onDone={refresh} onBack={() => setParentLogin(false)} />;
+  return <LearnerLogin onDone={refresh} onParent={() => setParentLogin(true)} />;
 }

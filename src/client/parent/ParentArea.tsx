@@ -28,14 +28,16 @@ export function ParentArea({ onLogout }: { onLogout: () => void }) {
       {screen === "learners" ? (
         <Learners />
       ) : (
-        // Not re-skinned yet (#30): they keep the pre-redesign styles.
-        <main className="parent-page legacy">
+        <main className="parent-page screen-enter" key={screen}>
           {screen === "curricula" && <Curricula />}
           {screen === "settings" && (
             <>
-              <LlmSettingsForm />
-              <TeachingSettingsForm />
-              <LimitSettingsForm />
+              <h1 className="h2">{text.parentArea.nav.settings}</h1>
+              <div className="settings-grid">
+                <LlmSettingsForm />
+                <TeachingSettingsForm />
+                <LimitSettingsForm />
+              </div>
             </>
           )}
           {screen === "usage" && <Usage />}
