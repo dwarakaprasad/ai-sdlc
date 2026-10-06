@@ -227,6 +227,7 @@ Set these in `.env`. With Node.js you can also set them in your shell.
 npm run dev          # API server, restarting on change
 npm run dev:client   # front-end dev server, proxying /api
 npm test             # the test suite
+npm run test:e2e     # builds the client, then whole user flows in a headless browser (once: npx playwright install chromium)
 npm run typecheck
 ```
 

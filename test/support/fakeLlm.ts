@@ -1,8 +1,9 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { LlmError, type ChatEvent, type ChatRequest, type LlmErrorKind, type LlmProvider, type StructuredRequest, type TokenUsage } from "../../src/llm/provider";
 
 const DEFAULT_USAGE: TokenUsage = { inputTokens: 10, outputTokens: 5 };
 
-type Scripted<T> = { reply: T; usage: TokenUsage } | { error: LlmErrorKind; usage?: TokenUsage };
+type Scripted<T> = { reply: T; usage: TokenUsage; pieceDelayMs?: number } | { error: LlmErrorKind; usage?: TokenUsage };
 
 /**
  * A scripted LLM provider: tests queue the Tutor's replies and structured decisions in order,
@@ -24,9 +25,12 @@ export function createFakeLlm() {
   const provider: LlmProvider = {
     async *chat(request): AsyncIterable<ChatEvent> {
       requests.push({ kind: "chat", ...request });
-      const { reply, usage } = next(chats, "chat reply");
+      const { reply, usage, pieceDelayMs } = next(chats, "chat reply");
       // Split into words so callers see the reply arrive in pieces, as from a real stream.
-      for (const piece of reply.match(/\S+\s*/g) ?? []) yield { type: "text", text: piece };
+      for (const piece of reply.match(/\S+\s*/g) ?? []) {
+        if (pieceDelayMs) await sleep(pieceDelayMs);
+        yield { type: "text", text: piece };
+      }
       yield { type: "done", usage };
     },
     async structured(request) {
@@ -39,9 +43,9 @@ export function createFakeLlm() {
   return {
     provider,
     requests,
-    /** Queues the next streamed Tutor reply. */
-    replyWith(reply: string, usage: TokenUsage = DEFAULT_USAGE) {
-      chats.push({ reply, usage });
+    /** Queues the next streamed Tutor reply; `pieceDelayMs` spaces out its pieces, for a browser test to watch it arrive. */
+    replyWith(reply: string, usage: TokenUsage = DEFAULT_USAGE, options: { pieceDelayMs?: number } = {}) {
+      chats.push({ reply, usage, ...options });
     },
     /** Queues the next structured-output result. */
     decideWith(data: unknown, usage: TokenUsage = DEFAULT_USAGE) {

@@ -43,6 +43,7 @@ export function createTestApp(
   return { client, llm };
 }
 
-function fakeForEveryProvider(llm: FakeLlm) {
+/** The fake standing in for every provider, so the Parent's choice of provider makes no difference. */
+export function fakeForEveryProvider(llm: FakeLlm) {
   return Object.fromEntries(PROVIDERS.map((p) => [p.id, llm.provider])) as AppDeps["providers"];
 }
