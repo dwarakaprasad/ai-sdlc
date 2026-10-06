@@ -22,3 +22,5 @@ export const SendIcon = (p: IconProps) => <Icon {...p}><path d="M4.5 12h14M13 6.
 export const SparkleIcon = (p: IconProps) => <Icon {...p}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" /></Icon>;
 export const StarIcon = (p: IconProps) => <Icon {...p}><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></Icon>;
 export const ParentIcon = (p: IconProps) => <Icon {...p}><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="10" r="2.2" /><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8M14.5 15c2.6-.4 4.9.9 5.5 3.6" /></Icon>;
+export const SkipIcon = (p: IconProps) => <Icon {...p}><path d="M6 6l7 6-7 6zM16.5 6v12" /></Icon>;
+export const TrophyIcon = (p: IconProps) => <Icon {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4" /></Icon>;

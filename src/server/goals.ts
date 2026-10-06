@@ -2,7 +2,19 @@ import { and, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { join } from "node:path";
 import { loadCurriculum, type Curriculum, type Subject, type Term } from "../curriculum";
-import type { Goal, GoalCard, GoalKind, GoalStatus, LearnerToday, LessonOption, SubjectToday, TermProgress } from "../shared/api";
+import type {
+  Goal,
+  GoalCard,
+  GoalKind,
+  GoalStatus,
+  LearnerToday,
+  LearningPath,
+  LessonOption,
+  PathNode,
+  PathState,
+  SubjectToday,
+  TermProgress,
+} from "../shared/api";
 import type { AppDeps } from "./deps";
 import { parseId, readJsonObject } from "./http";
 import { learnerFromPath, type LearnerRow } from "./learners";
@@ -194,6 +206,40 @@ export function termHolding(subject: Subject, key: string): Term | undefined {
 export function currentTermOf(subject: Subject, queue: Goal[], current: Goal | undefined): Term | undefined {
   const lastMet = [...queue].reverse().find((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey));
   return (current && termHolding(subject, current.lessonKey)) ?? (lastMet && termHolding(subject, lastMet.lessonKey));
+}
+
+/**
+ * A Subject's Learning Path: its current Term in Curriculum order, each Lesson and Unit Test shown by the state of its Goal.
+ * Undefined when the Subject isn't in the Learner's Curriculum (or the Curriculum is invalid), or has no current Term.
+ */
+export function learningPathOf(deps: AppDeps, learner: LearnerRow, subjectKey: string): LearningPath | undefined {
+  const subject = curriculumOf(deps.curriculaDir, learner)?.subjects.find((s) => s.key === subjectKey);
+  if (!subject) return undefined;
+  const queue = goalsOf(deps, learner).filter((goal) => goal.subjectKey === subjectKey);
+  const current = queue.find((goal) => isToBeMet(goal.status));
+  const term = currentTermOf(subject, queue, current);
+  if (!term) return undefined;
+
+  /** A node's state from its Goals: a Lesson may have had several (say, one skipped and a later one set again). */
+  const stateOf = (kind: GoalKind, key: string): PathState => {
+    const own = queue.filter((goal) => goal.kind === kind && goal.lessonKey === key);
+    if (own.some((goal) => goal.status === "met")) return "met";
+    // The current Goal decides, even out of Curriculum order: the Goal queue, not the Path, says what's next.
+    if (current && own.includes(current)) return current.status === "flagged" || current.orphaned ? "with-parent" : "current";
+    if (own.some((goal) => goal.status === "flagged")) return "with-parent";
+    if (own.some((goal) => goal.status === "skipped")) return "skipped";
+    return "ahead";
+  };
+  const node = (kind: GoalKind, key: string, title: string): PathNode => ({ key, kind, title, state: stateOf(kind, key) });
+  return {
+    subjectName: subject.name,
+    termName: term.name,
+    units: term.units.map((unit) => ({
+      key: unit.key,
+      title: unit.title,
+      nodes: [...unit.lessons.map((lesson) => node("lesson", lesson.key, lesson.title)), node("unit-test", unit.key, unit.title)],
+    })),
+  };
 }
 
 /** A Subject's current Term with its met Lessons and Unit Tests (each once, however many Goals met it) out of all of them. */

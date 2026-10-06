@@ -7,6 +7,7 @@ import type {
   DailyUsage,
   Goal,
   LearnerToday,
+  LearningPath,
   GoalInput,
   GoalOrder,
   GoalProgress,
@@ -85,6 +86,13 @@ export const api = {
   /** Saves the logged-in Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
   pickAvatar: (choice: { avatar: AvatarId; color: AccentColor }) => send("/api/learner/me/avatar", "PUT", choice),
   today: () => get<LearnerToday>("/api/learner/goals"),
+  /** A Subject's Learning Path, or undefined while it has none (no Goal yet, or a Curriculum that needs fixing). */
+  learningPath: async (subjectKey: string) => {
+    const res = await fetch(`/api/learner/subjects/${encodeURIComponent(subjectKey)}/path`);
+    if (res.status === 404) return undefined;
+    if (!res.ok) throw new Error(`learning path: ${res.status}`);
+    return (await res.json()) as LearningPath;
+  },
   teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
   saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),
   /**

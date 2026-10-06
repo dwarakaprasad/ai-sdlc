@@ -7,13 +7,16 @@ import { TopBar } from "../components/TopBar";
 import { TutorMark } from "../components/TutorMark";
 import { Button, Card, Meter, Tag } from "../components/ui";
 import { text } from "../text";
+import { LearningPathScreen } from "./LearningPath";
 import { SessionChat } from "./SessionChat";
 
-/** The logged-in Learner's app: Today, and a Session once they start a Goal. */
+/** The logged-in Learner's app: Today, a Subject's Learning Path, and a Session once they start a Goal. */
 export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout: () => void }) {
   const [today, setToday] = useState<LearnerToday>();
   const [error, setError] = useState<string>();
   const [openGoal, setOpenGoal] = useState<number>();
+  /** The Subject whose Learning Path is showing, instead of Today. */
+  const [pathOf, setPathOf] = useState<string>();
   const loadToday = () => void api.today().then(setToday, () => setError(text.genericError));
   useEffect(loadToday, []);
 
@@ -25,25 +28,42 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
   return (
     <div className="learner-app">
       <TopBar
-        nav={[{ label: text.learnerNav.today, current: true, onSelect: loadToday }]}
+        nav={[
+          { label: text.learnerNav.today, current: pathOf === undefined, onSelect: () => (setPathOf(undefined), loadToday()) },
+          // The Path of the Subject to continue: the first on Today.
+          ...(today?.subjects[0]
+            ? [{ label: text.learnerNav.learningPath, current: pathOf !== undefined, onSelect: () => setPathOf(pathOf ?? today.subjects[0]!.subjectKey) }]
+            : []),
+        ]}
         end={
           <button type="button" className="switch-profile" aria-label={text.learnerNav.switchProfile} onClick={() => api.logoutLearner().then(onLogout)}>
             <Avatar {...learner} size={36} />
           </button>
         }
       />
-      <main className="page screen-enter">
-        <h1 className="h1">{text.learnerHome.heading(learner.name)}</h1>
-        {error && <p className="text-warm">{error}</p>}
-        {!today && !error && <p className="muted">{text.loading}</p>}
-        {today && <Today today={today} onStart={setOpenGoal} />}
-      </main>
+      {pathOf !== undefined ? (
+        <main className="page screen-enter" key={pathOf}>
+          <LearningPathScreen
+            subjectKey={pathOf}
+            currentGoalId={today?.subjects.find((s) => s.subjectKey === pathOf)?.card?.id}
+            onStart={setOpenGoal}
+            onBack={() => setPathOf(undefined)}
+          />
+        </main>
+      ) : (
+        <main className="page screen-enter">
+          <h1 className="h1">{text.learnerHome.heading(learner.name)}</h1>
+          {error && <p className="text-warm">{error}</p>}
+          {!today && !error && <p className="muted">{text.loading}</p>}
+          {today && <Today today={today} onStart={setOpenGoal} onOpenPath={setPathOf} />}
+        </main>
+      )}
     </div>
   );
 }
 
 /** Today: the Goal to continue, what the Learner has achieved, and every Subject with its own Goal to start. */
-function Today({ today, onStart }: { today: LearnerToday; onStart: (goalId: number) => void }) {
+function Today({ today, onStart, onOpenPath }: { today: LearnerToday; onStart: (goalId: number) => void; onOpenPath: (subjectKey: string) => void }) {
   if (today.subjects.length === 0) {
     return (
       <Card className="home-empty">
@@ -58,7 +78,7 @@ function Today({ today, onStart }: { today: LearnerToday; onStart: (goalId: numb
     <>
       <div className="home-grid">
         {first?.card ? (
-          <ContinueCard subject={first} card={first.card} onStart={() => onStart(first.card!.id)} />
+          <ContinueCard subject={first} card={first.card} onStart={onStart} />
         ) : (
           <Card className="home-empty">
             <TutorMark size={56} mood="resting" />
@@ -77,7 +97,7 @@ function Today({ today, onStart }: { today: LearnerToday; onStart: (goalId: numb
       <h2 className="h3 home-section">{text.learnerHome.allSubjects}</h2>
       <ul className="subject-rows">
         {today.subjects.map((subject) => (
-          <SubjectRow key={subject.subjectKey} subject={subject} onStart={onStart} />
+          <SubjectRow key={subject.subjectKey} subject={subject} onStart={onStart} onOpenPath={() => onOpenPath(subject.subjectKey)} />
         ))}
       </ul>
     </>
@@ -85,7 +105,7 @@ function Today({ today, onStart }: { today: LearnerToday; onStart: (goalId: numb
 }
 
 /** The Goal to do next, with the Tutor beside it and one button to start. */
-function ContinueCard({ subject, card, onStart }: { subject: SubjectToday; card: GoalCard; onStart: () => void }) {
+function ContinueCard({ subject, card, onStart }: { subject: SubjectToday; card: GoalCard; onStart: (goalId: number) => void }) {
   return (
     <article className="continue-card">
       <div className="continue-art">
@@ -104,7 +124,7 @@ function ContinueCard({ subject, card, onStart }: { subject: SubjectToday; card:
           <p className="muted continue-note">{text.learnerHome.target(card.targetDate)}</p>
         )}
         <div>
-          <Button onClick={onStart}>
+          <Button onClick={() => onStart(card.id)}>
             {text.learnerHome.continue} <ArrowIcon size={18} />
           </Button>
         </div>
@@ -114,11 +134,13 @@ function ContinueCard({ subject, card, onStart }: { subject: SubjectToday; card:
 }
 
 /** One Subject: its current Goal and a Start button, or why there's nothing to start; and how far through its Term it is. */
-function SubjectRow({ subject, onStart }: { subject: SubjectToday; onStart: (goalId: number) => void }) {
+function SubjectRow({ subject, onStart, onOpenPath }: { subject: SubjectToday; onStart: (goalId: number) => void; onOpenPath: () => void }) {
   const { card, term } = subject;
   return (
     <li className={subject.withParent ? "subject-row with-parent" : "subject-row"}>
-      <span className="subject-row-name">{subject.subjectName}</span>
+      <button type="button" className="subject-row-name" onClick={onOpenPath}>
+        {subject.subjectName}
+      </button>
       <span className="subject-row-goal">
         {card ? (
           <>

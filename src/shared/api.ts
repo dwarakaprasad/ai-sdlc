@@ -169,6 +169,22 @@ export type TermProgress = { termName: string; met: number; total: number };
 export type SubjectToday = { subjectKey: string; subjectName: string; card: GoalCard | null; withParent: boolean; term: TermProgress | null };
 
 /**
+ * Where a Lesson or Unit Test stands on the Learning Path, from its Goal: met, skipped, the Subject's current Goal,
+ * with the Parent (Flagged, or the current Goal and Orphaned), or ahead (anything else, including no Goal yet).
+ */
+export const PATH_STATES = ["met", "current", "skipped", "with-parent", "ahead"] as const;
+export type PathState = (typeof PATH_STATES)[number];
+
+/** A Lesson, or a Unit's Unit Test (keyed and titled by its Unit), on the Learning Path. */
+export type PathNode = { key: string; kind: GoalKind; title: string; state: PathState };
+
+/**
+ * A Subject's Learning Path (GET /api/learner/subjects/:subjectKey/path): its current Term's Units in Curriculum order,
+ * each with its Lessons and then its Unit Test. Worked out on each request; the Goal queue, not the Path, decides what's next.
+ */
+export type LearningPath = { subjectName: string; termName: string; units: { key: string; title: string; nodes: PathNode[] }[] };
+
+/**
  * The Learner's home data (GET /api/learner/goals): one entry per Subject with any Goal, the Subjects with a card first,
  * earliest Target Date first (so an overdue Goal leads), and the Subjects with the Parent last; and how many Goals the
  * Learner has met in all.
