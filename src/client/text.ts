@@ -25,6 +25,9 @@ function formatDate(date: string): string {
   return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
+/** How many errors an invalid Curriculum has, e.g. "1 error" or "3 errors". */
+const errorCount = (count: number) => `${count} ${count === 1 ? "error" : "errors"}`;
+
 /**
  * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
  * "math/term-1/unit-2" as "U1.2"; any other key (an Orphaned Goal's, say) as it is.
@@ -402,16 +405,15 @@ export const text = {
     heading: "Token usage",
     none: "No tokens used yet.",
     columns: { date: "Day", input: "Tokens in", output: "Tokens out", calls: "Calls" },
-    date: formatDate,
   },
   curricula: {
     heading: "Curricula",
     none: "No Curriculum folders found. Add one to the curricula folder (see docs/curriculum-format.md).",
     details: (district: string, grade: string, schoolYear: string) => `${district} · Grade ${grade} · ${schoolYear}`,
-    errorCount: (count: number) => `${count} ${count === 1 ? "error" : "errors"}`,
+    errorCount,
     subject: (name: string, lessons: number) => `${name}: ${lessons} ${lessons === 1 ? "Lesson" : "Lessons"}`,
     invalid: (count: number) =>
-      `This Curriculum has ${count} ${count === 1 ? "error" : "errors"} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
+      `This Curriculum has ${errorCount(count)} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
     location: (file: string, line?: number) => (line === undefined ? file : `${file}:${line}`),
   },
 } as const;

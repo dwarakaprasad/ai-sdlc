@@ -31,7 +31,7 @@ export function Usage() {
             <tbody>
               {days.map((d) => (
                 <tr key={d.date}>
-                  <th scope="row">{text.usage.date(d.date)}</th>
+                  <th scope="row">{d.date}</th>
                   <td>{d.inputTokens.toLocaleString()}</td>
                   <td>{d.outputTokens.toLocaleString()}</td>
                   <td>{d.calls.toLocaleString()}</td>

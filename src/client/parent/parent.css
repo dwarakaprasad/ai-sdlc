@@ -465,9 +465,6 @@
   flex-direction: column;
   gap: var(--s-3);
 }
-.settings-card p {
-  margin: 0;
-}
 
 /* Usage: a table, a row per day */
 .usage-wrap {
