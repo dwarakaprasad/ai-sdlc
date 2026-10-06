@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { curriculaDir } from "../curriculum";
@@ -8,6 +8,9 @@ import { anthropicProvider } from "../llm/anthropic";
 import { openaiProvider } from "../llm/openai";
 import { createApp } from "./app";
 import { openDatabase } from "./db";
+
+// API keys come from the environment, optionally via a git-ignored .env (ADR 0002). Variables already set win.
+if (existsSync(".env")) process.loadEnvFile(".env");
 
 // Private family data lives here; the folder is git-ignored (ADR 0001).
 const dataDir = process.env.HOME_TUTOR_DATA_DIR ?? "data";
