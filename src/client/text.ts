@@ -1,5 +1,13 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
+import {
+  MAX_BREAK_MINUTES,
+  MAX_QUIZ_ATTEMPTS_LIMIT,
+  MAX_RE_EXPLANATIONS_LIMIT,
+  type AccentColor,
+  type AvatarId,
+  type GoalKind,
+  type GoalStatus,
+} from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 /** The Tutor's name, in the UI only: in the domain and the code it is the Tutor. */
@@ -51,6 +59,45 @@ export const text = {
     wrongPin: "That PIN isn't right. Try again.",
     submit: "Start",
     back: "Back",
+  },
+  /** Each Avatar picture's name, read out for the picture grid. */
+  avatars: {
+    fox: "Fox",
+    owl: "Owl",
+    cat: "Cat",
+    panda: "Panda",
+    frog: "Frog",
+    whale: "Whale",
+    penguin: "Penguin",
+    turtle: "Turtle",
+    rocket: "Rocket",
+    planet: "Planet",
+    bolt: "Lightning bolt",
+    mountain: "Mountain",
+    cactus: "Cactus",
+    guitar: "Guitar",
+    controller: "Game controller",
+    leaf: "Leaf",
+  } satisfies Record<AvatarId, string>,
+  /** Each accent colour's name, read out for the colour swatches. */
+  colors: {
+    coral: "Coral",
+    amber: "Amber",
+    sun: "Sunshine",
+    mint: "Mint",
+    sky: "Sky",
+    indigo: "Indigo",
+    violet: "Violet",
+    pink: "Pink",
+  } satisfies Record<AccentColor, string>,
+  avatarPick: {
+    eyebrow: "Set up",
+    heading: (name: string) => `Make it yours, ${name}.`,
+    intro: "Pick a picture and a colour. You can ask your Parent to change them later.",
+    pictureHeading: "Picture",
+    colorHeading: "Colour",
+    done: "Done",
+    notMe: (name: string) => `Not ${name}? Switch profile`,
   },
   learnerHome: {
     heading: (name: string) => `Hi ${name}!`,
@@ -230,6 +277,9 @@ export const text = {
     newPinLabel: "New PIN",
     newPinHint: `${pinDigits}. Leave empty to keep the current PIN.`,
     removePin: "Remove the PIN",
+    avatarLabel: "Avatar",
+    noAvatar: "None yet (picked at the next login)",
+    colorLabel: "Colour",
     add: "Add Learner",
     save: "Save",
     cancel: "Cancel",
@@ -241,6 +291,8 @@ export const text = {
       gradeRequired: "Enter a grade.",
       unknownCurriculum: "Choose a valid Curriculum.",
       invalidPin: `A PIN is ${pinDigits}.`,
+      unknownAvatar: "Choose one of the Avatars.",
+      unknownColor: "Choose one of the colours.",
     } as Record<string, string>,
   },
   llmSettings: {

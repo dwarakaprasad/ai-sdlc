@@ -41,12 +41,3 @@ export function Meter({ value, total, label }: { value: number; total: number; l
     </span>
   );
 }
-
-/** A profile's first letter on a rounded square, until Learners pick an Avatar. Decorative: the name is always beside it. */
-export function Initial({ name, size = 64 }: { name: string; size?: number }) {
-  return (
-    <span className="initial" style={{ width: size, height: size, fontSize: size * 0.45 }} aria-hidden>
-      {name.trim().charAt(0).toUpperCase()}
-    </span>
-  );
-}

@@ -136,18 +136,6 @@
   background: var(--meter-color, var(--ink));
 }
 
-/* Initial */
-.initial {
-  flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 30%;
-  background: var(--ink);
-  color: var(--on-ink);
-  font-weight: 800;
-  line-height: 1;
-}
-
 /* Wordmark and top bar */
 .wordmark {
   display: flex;
@@ -269,4 +257,79 @@
     opacity: 0;
     translate: 30px 70vh;
   }
+}
+
+/* Avatar: a drawing on the Learner's accent colour (Avatar.tsx) */
+.avatar {
+  flex: none;
+}
+.accent-coral {
+  color: var(--accent-coral);
+}
+.accent-amber {
+  color: var(--accent-amber);
+}
+.accent-sun {
+  color: var(--accent-sun);
+}
+.accent-mint {
+  color: var(--accent-mint);
+}
+.accent-sky {
+  color: var(--accent-sky);
+}
+.accent-indigo {
+  color: var(--accent-indigo);
+}
+.accent-violet {
+  color: var(--accent-violet);
+}
+.accent-pink {
+  color: var(--accent-pink);
+}
+.avatar.avatar-muted {
+  color: var(--ink-2);
+}
+.avatar-tile,
+.avatar .a {
+  fill: currentColor;
+}
+.avatar .w {
+  fill: var(--on-ink);
+}
+.avatar .k {
+  fill: var(--ink);
+}
+.avatar .d {
+  fill: var(--avatar-dim);
+}
+.avatar .y {
+  fill: var(--yellow);
+}
+.avatar .o {
+  fill: var(--orange-soft);
+}
+.avatar :is(.w-line, .k-line, .a-line, .d-line) {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.avatar .w-line,
+.avatar .w-edge {
+  stroke: var(--on-ink);
+}
+.avatar .k-line {
+  stroke: var(--ink);
+}
+.avatar .a-line {
+  stroke: currentColor;
+}
+.avatar .d-line {
+  stroke: var(--avatar-dim);
+}
+.avatar-initial {
+  fill: var(--on-ink);
+  font-size: var(--t-h1);
+  font-weight: 800;
+  font-family: var(--font);
 }

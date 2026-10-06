@@ -116,3 +116,8 @@ main.legacy:has(.curriculum) {
   font: inherit;
   padding: 0.5rem;
 }
+:where(.legacy) .learner-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}

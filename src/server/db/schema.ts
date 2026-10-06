@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { GOAL_KINDS, DEFAULT_LIMIT_SETTINGS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, QUESTION_TYPES, SESSION_STEPS } from "../../shared/api";
+import { ACCENT_COLORS, AVATARS, GOAL_KINDS, DEFAULT_LIMIT_SETTINGS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, QUESTION_TYPES, SESSION_STEPS } from "../../shared/api";
 
 /** Who a login belongs to. */
 export const roles = ["parent", "learner"] as const;
@@ -30,6 +30,10 @@ export const learners = sqliteTable("learners", {
   curriculumId: text("curriculum_id").notNull(),
   /** Hashed like the Parent password; null when the Learner has no PIN. */
   pinHash: text("pin_hash"),
+  /** The Learner's Avatar picture; null until their first pick. */
+  avatar: text("avatar", { enum: AVATARS }),
+  /** The accent colour behind the Avatar; the app gives a new Learner the least-used one. The default only fills rows from before Avatars. */
+  color: text("color", { enum: ACCENT_COLORS }).notNull().default(ACCENT_COLORS[0]),
 });
 
 /** The Parent's settings; at most one row (id = 1), and defaults apply until the Parent saves. No API key is ever stored (ADR 0002). */

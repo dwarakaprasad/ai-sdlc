@@ -2,7 +2,17 @@ import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { loadCurricula } from "../curriculum";
 import { PIN_PATTERN } from "../shared/auth";
-import type { Learner, LearnerInput } from "../shared/api";
+import {
+  ACCENT_COLORS,
+  isAccentColor,
+  isAvatarId,
+  type AccentColor,
+  type AvatarChoice,
+  type Learner,
+  type LearnerInput,
+  type LearnerProfile,
+  type LoggedInLearner,
+} from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, hashPassword } from "./auth";
 import { parseId, readJsonObject } from "./http";
@@ -36,6 +46,36 @@ export function hasPin(learner: LearnerRow): boolean {
   return learner.pinHash !== null;
 }
 
+/** A Learner's Avatar and its colour, as every view of a Learner shows them. */
+function avatarOf({ avatar, color }: LearnerRow): AvatarChoice {
+  return { avatar, color };
+}
+
+/** A Learner's profile on the login screen: no private details. */
+export function toLearnerProfile(row: LearnerRow): LearnerProfile {
+  return { id: row.id, name: row.name, hasPin: hasPin(row), ...avatarOf(row) };
+}
+
+/** The logged-in Learner, as they see themselves. */
+export function toLoggedInLearner(row: LearnerRow): LoggedInLearner {
+  return { id: row.id, name: row.name, ...avatarOf(row) };
+}
+
+/** Saves a Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
+export function saveAvatar(db: Db, learner: LearnerRow, choice: { avatar: NonNullable<AvatarChoice["avatar"]>; color: AccentColor }): LearnerRow {
+  return db.update(learners).set(choice).where(eq(learners.id, learner.id)).returning().get()!;
+}
+
+/**
+ * The colour a new Learner gets, so siblings differ by default: the one fewest Learners have, earliest in palette order
+ * on a tie. Learners added one after another get the colours in palette order.
+ */
+function nextColor(db: Db): AccentColor {
+  const used = allLearners(db).map((l) => l.color);
+  const count = (color: AccentColor) => used.filter((c) => c === color).length;
+  return ACCENT_COLORS.reduce((least, color) => (count(color) < count(least) ? color : least));
+}
+
 /** The Parent's Learner management, mounted under the Parent's protected routes. */
 export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
   const isValidCurriculum = (id: string) => loadCurricula(curriculaDir).some((r) => r.ok && r.id === id);
@@ -45,10 +85,10 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
       const input = await readLearnerInput(c);
       if ("error" in input) return c.json(input, 400);
       if (!isValidCurriculum(input.curriculumId)) return c.json({ error: "unknownCurriculum" }, 400);
-      const { pin, ...fields } = input;
+      const { pin, avatar, color, ...fields } = input;
       const row = db
         .insert(learners)
-        .values({ ...fields, pinHash: pin ? await hashPassword(pin) : null })
+        .values({ ...fields, avatar: avatar ?? null, color: color ?? nextColor(db), pinHash: pin ? await hashPassword(pin) : null })
         .returning()
         .get();
       return c.json(toLearner(row), 201);
@@ -62,11 +102,12 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
       if (input.curriculumId !== existing.curriculumId && !isValidCurriculum(input.curriculumId)) {
         return c.json({ error: "unknownCurriculum" }, 400);
       }
-      const { pin, ...fields } = input;
+      // An absent PIN, Avatar or colour keeps the current one.
+      const { pin, avatar = existing.avatar, color = existing.color, ...fields } = input;
       const pinHash = pin === undefined ? existing.pinHash : pin === null ? null : await hashPassword(pin);
       const row = db
         .update(learners)
-        .set({ ...fields, pinHash })
+        .set({ ...fields, avatar, color, pinHash })
         .where(eq(learners.id, existing.id))
         .returning()
         .get();
@@ -82,21 +123,25 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
 
 function toLearner(row: LearnerRow): Learner {
   const { id, name, grade, curriculumId } = row;
-  return { id, name, grade, curriculumId, hasPin: hasPin(row) };
+  return { id, name, grade, curriculumId, hasPin: hasPin(row), ...avatarOf(row) };
 }
 
-type LearnerInputError = { error: "invalidBody" | "nameRequired" | "gradeRequired" | "unknownCurriculum" | "invalidPin" };
+type LearnerInputError = {
+  error: "invalidBody" | "nameRequired" | "gradeRequired" | "unknownCurriculum" | "invalidPin" | "unknownAvatar" | "unknownColor";
+};
 
 /** The validated Learner fields from a JSON body, or the error describing what's wrong. */
 async function readLearnerInput(c: Context): Promise<LearnerInput | LearnerInputError> {
   const body = await readJsonObject(c);
   if (!body) return { error: "invalidBody" };
-  const { name, grade, curriculumId, pin } = body;
+  const { name, grade, curriculumId, pin, avatar, color } = body;
   if (typeof name !== "string" || name.trim() === "") return { error: "nameRequired" };
   if (typeof grade !== "string" || grade.trim() === "") return { error: "gradeRequired" };
   if (typeof curriculumId !== "string") return { error: "unknownCurriculum" };
   if (pin !== undefined && pin !== null && (typeof pin !== "string" || !PIN_PATTERN.test(pin))) {
     return { error: "invalidPin" };
   }
-  return { name: name.trim(), grade: grade.trim(), curriculumId, pin };
+  if (avatar !== undefined && avatar !== null && !isAvatarId(avatar)) return { error: "unknownAvatar" };
+  if (color !== undefined && !isAccentColor(color)) return { error: "unknownColor" };
+  return { name: name.trim(), grade: grade.trim(), curriculumId, pin, avatar, color };
 }

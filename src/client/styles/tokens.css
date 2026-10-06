@@ -34,6 +34,18 @@
   --on-ink-muted: #a5a8b3;
   --yellow-edge: #c9a21f;
   --lift: 0 12px 40px rgba(22, 24, 29, 0.05);
+  --orange-soft: #ffb020;
+  --avatar-dim: rgba(29, 36, 51, 0.22);
+
+  /* Accent colours a Learner picks for their Avatar (ACCENT_COLORS), in palette order. */
+  --accent-coral: #ff6b5b;
+  --accent-amber: #ff9f1c;
+  --accent-sun: #f7c948;
+  --accent-mint: #3ecf8e;
+  --accent-sky: #1cb0f6;
+  --accent-indigo: #5b6cff;
+  --accent-violet: #a55eea;
+  --accent-pink: #ff5fa2;
 
   /* Spacing */
   --s-1: 4px;

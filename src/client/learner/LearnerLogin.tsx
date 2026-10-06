@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import type { LearnerProfile } from "../../shared/api";
 import { api } from "../api";
 import { ArrowIcon, LockIcon } from "../components/icons";
-import { Button, Field, Initial } from "../components/ui";
+import { Avatar } from "../components/Avatar";
+import { Button, Field } from "../components/ui";
 import { Wordmark } from "../components/Wordmark";
 import { text } from "../text";
 
@@ -31,7 +32,7 @@ export function LearnerLogin({ onDone, onParent }: { onDone: () => void; onParen
       <main className="split screen-enter">
         <section className="split-start">
           <Wordmark />
-          <Initial name={chosen.name} size={88} />
+          <Avatar {...chosen} size={88} />
           <h1 className="display">{text.learnerLogin.pinHeading(chosen.name)}</h1>
         </section>
         <form
@@ -68,7 +69,7 @@ export function LearnerLogin({ onDone, onParent }: { onDone: () => void; onParen
         {profiles?.length === 0 && <p className="muted">{text.learnerLogin.noProfiles}</p>}
         {profiles?.map((profile) => (
           <button key={profile.id} type="button" className="profile-row" onClick={() => choose(profile)}>
-            <Initial name={profile.name} />
+            <Avatar {...profile} />
             <span className="profile-name">{profile.name}</span>
             {profile.hasPin ? (
               <span className="profile-pin">

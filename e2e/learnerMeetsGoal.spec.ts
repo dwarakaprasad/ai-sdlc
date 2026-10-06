@@ -43,6 +43,9 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   // The Learner picks their profile and starts the Goal.
   await expect(page.getByRole("heading", { name: "Who's learning today?" })).toBeVisible();
   await page.getByRole("button", { name: "Ada" }).click();
+  // A first login: Ada makes the profile hers first.
+  await page.getByRole("radio", { name: "Owl" }).check();
+  await page.getByRole("button", { name: "Done" }).click();
   await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
   const goal = page.getByRole("article").filter({ hasText: "Understanding ratios" });
   await llm.replyWith(EXPLANATION, { pieceDelayMs: 100 });

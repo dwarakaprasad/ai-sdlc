@@ -1,4 +1,6 @@
 import type {
+  AccentColor,
+  AvatarId,
   AnswerResult,
   ConnectionTest,
   CurriculumSummary,
@@ -80,6 +82,8 @@ export const api = {
   },
   loginLearner: (learnerId: number, pin?: string) => post("/api/learner/login", { learnerId, pin }),
   logoutLearner: () => post("/api/learner/logout", {}),
+  /** Saves the logged-in Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
+  pickAvatar: (choice: { avatar: AvatarId; color: AccentColor }) => send("/api/learner/me/avatar", "PUT", choice),
   goalCards: () => get<GoalCard[]>("/api/learner/goals"),
   teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
   saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),

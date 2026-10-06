@@ -38,17 +38,18 @@ export const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400
 
 /**
  * Sets up a household over the API, for tests whose journey starts after the Parent's part: the Parent password, then each
- * Learner on the fixture Curriculum with a Goal on its first Lesson. Logs the Parent out again, so the page opens on the profiles.
+ * Learner on the fixture Curriculum with a Goal on its first Lesson, and an Avatar already picked (the fox) unless `avatar` is null.
+ * Logs the Parent out again, so the page opens on the profiles.
  */
-export async function setUpHousehold(request: APIRequestContext, learners: { name: string; pin?: string }[]) {
+export async function setUpHousehold(request: APIRequestContext, learners: { name: string; pin?: string; avatar?: string | null }[]) {
   const post = async (path: string, data: unknown) => {
     const res = await request.post(path, { data });
     expect(res.ok(), `${path} answered ${res.status()}`).toBe(true);
     return res;
   };
   await post("/api/parent/setup", { password: "correct horse" });
-  for (const { name, pin } of learners) {
-    const learner = (await (await post("/api/parent/learners", { name, grade: "6", curriculumId: "grade-6", pin })).json()) as { id: number };
+  for (const { name, pin, avatar = "fox" } of learners) {
+    const learner = (await (await post("/api/parent/learners", { name, grade: "6", curriculumId: "grade-6", pin, avatar })).json()) as { id: number };
     await post(`/api/parent/learners/${learner.id}/goals`, { lessonKey: "math/term-1/unit-1/lesson-1", targetDate: daysFromNow(30) });
   }
   await post("/api/parent/logout", undefined);
