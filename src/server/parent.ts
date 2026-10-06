@@ -4,6 +4,7 @@ import type { ParentStatus } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentRole, endLogin, forbidRole, hashPassword, requireRole, startLogin, verifyPassword } from "./auth";
 import { listCurricula } from "./curricula";
+import { parentGoalRoutes } from "./goals";
 import { parentLearnerRoutes } from "./learners";
 import { parentSettingsRoutes } from "./settings";
 import { parentUsageRoutes } from "./usage";
@@ -18,6 +19,7 @@ export function parentRoutes(deps: AppDeps) {
     .use(requireRole(db, "parent"))
     .get("/curricula", (c) => c.json(listCurricula(curriculaDir)))
     .route("/learners", parentLearnerRoutes(deps))
+    .route("/learners/:id", parentGoalRoutes(deps))
     .route("/settings", parentSettingsRoutes(deps))
     .route("/usage", parentUsageRoutes(deps));
 

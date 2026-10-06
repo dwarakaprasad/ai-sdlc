@@ -1,4 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { GOAL_KINDS, GOAL_STATUSES } from "../../shared/api";
 
 /** Who a login belongs to. */
 export const roles = ["parent", "learner"] as const;
@@ -48,4 +49,24 @@ export const llmUsage = sqliteTable("llm_usage", {
   inputTokens: integer("input_tokens").notNull(),
   outputTokens: integer("output_tokens").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * A Learner's Goal: master one Lesson, or pass one Unit Test, by a Target Date.
+ * Overdue is worked out from the Target Date when needed, never stored.
+ */
+export const goals = sqliteTable("goals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  learnerId: integer("learner_id")
+    .notNull()
+    .references(() => learners.id, { onDelete: "cascade" }),
+  subjectKey: text("subject_key").notNull(),
+  /** The Lesson key for a lesson Goal, the Unit key for a unit-test Goal; may no longer exist after a Curriculum edit. */
+  curriculumKey: text("curriculum_key").notNull(),
+  kind: text("kind", { enum: GOAL_KINDS }).notNull(),
+  /** Place in the Learner's queue for this Subject; lowest first. */
+  position: integer("position").notNull(),
+  /** YYYY-MM-DD. */
+  targetDate: text("target_date").notNull(),
+  status: text("status", { enum: GOAL_STATUSES }).notNull(),
 });

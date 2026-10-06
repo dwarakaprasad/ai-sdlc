@@ -64,6 +64,10 @@ _Avoid_: Task, assignment, objective
 The date by which the Parent wants a Goal met.
 _Avoid_: Deadline, due date
 
+**Overdue**:
+A Goal whose Target Date has passed and that is not yet met; worked out when shown, never stored, and it changes nothing by itself. The Learner sees it gently ("let's catch up").
+_Avoid_: Late, missed
+
 **Session**:
 One continuous sitting in which a Learner works with the Tutor; a Goal may take several Sessions.
 _Avoid_: Lesson (a Lesson is curriculum, not a sitting), class

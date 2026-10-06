@@ -1,6 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { MIN_PASSWORD_LENGTH, PIN_PATTERN } from "../shared/auth";
-import type { CurriculumSummary, DailyUsage, Learner, LearnerInput, LlmSettings, LoggedInLearner, LearnerProfile, ParentStatus } from "../shared/api";
+import type {
+  CurriculumSummary,
+  DailyUsage,
+  Goal,
+  GoalCard,
+  Learner,
+  LearnerInput,
+  LessonOption,
+  LlmSettings,
+  LoggedInLearner,
+  LearnerProfile,
+  ParentStatus,
+} from "../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
 import { text } from "./text";
@@ -316,10 +328,25 @@ function LearnerLogin({ onDone, onParent }: { onDone: () => void; onParent: () =
 }
 
 function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; onLogout: () => void }) {
+  const [cards, setCards] = useState<GoalCard[]>();
+  const [error, setError] = useState<string>();
+  useEffect(() => void api.goalCards().then(setCards, () => setError(text.genericError)), []);
+
   return (
     <section>
       <h1>{text.learnerHome.heading(learner.name)}</h1>
-      <p>{text.learnerHome.noGoals}</p>
+      {error && <p className="error">{error}</p>}
+      {!cards && !error && <p>{text.loading}</p>}
+      {cards?.length === 0 && <p>{text.learnerHome.noGoals}</p>}
+      {cards && cards.length > 0 && <p>{text.learnerHome.goalsIntro}</p>}
+      {cards?.map((card) => (
+        <article key={card.id} className={card.overdue ? "card goal-card catch-up" : "card goal-card"}>
+          <p className="subject">{card.subjectName}</p>
+          <h2>{card.title}</h2>
+          {/* Gentle wording for the Learner; the Parent sees "Overdue" plainly. */}
+          <p className="hint">{card.overdue ? text.learnerHome.catchUp : text.learnerHome.target(card.targetDate)}</p>
+        </article>
+      ))}
       <button type="button" onClick={() => api.logoutLearner().then(onLogout)}>
         {text.learnerHome.logout}
       </button>
@@ -367,6 +394,7 @@ function Learners() {
           <article key={learner.id} className="card">
             <h3>{learner.name}</h3>
             <p className="hint">{text.learners.details(learner.grade, learner.curriculumId, learner.hasPin)}</p>
+            <Goals learner={learner} />
             <div className="actions">
               <button type="button" onClick={() => setEditing(learner)}>
                 {text.learners.edit}
@@ -385,6 +413,77 @@ function Learners() {
           <LearnerForm curriculumIds={curriculumIds} onDone={() => void refresh()} />
         ))}
     </section>
+  );
+}
+
+/** A Learner's Goals in the Parent area, with a form to set a new one. */
+function Goals({ learner }: { learner: Learner }) {
+  const [goals, setGoals] = useState<Goal[]>();
+  const [lessons, setLessons] = useState<LessonOption[]>();
+  const [lessonKey, setLessonKey] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [error, setError] = useState<string>();
+
+  const refresh = () =>
+    Promise.all([api.goals(learner.id), api.lessons(learner.id)]).then(([g, l]) => {
+      setGoals(g);
+      setLessons(l);
+      setLessonKey((key) => key || (l[0]?.key ?? ""));
+    }, () => setError(text.genericError));
+  // Re-read when the Learner is edited, since a new Curriculum means new Lessons.
+  useEffect(() => void refresh(), [learner.id, learner.curriculumId]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const res = await api.createGoal(learner.id, { lessonKey, targetDate });
+    if (res.ok) return (setTargetDate(""), setError(undefined), void refresh());
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    setError(text.goals.errors[body.error ?? ""] ?? text.genericError);
+  }
+
+  if (!goals || !lessons) return error ? <p className="error">{error}</p> : <p>{text.loading}</p>;
+  return (
+    <>
+      <h4>{text.goals.heading}</h4>
+      {goals.length === 0 && <p className="hint">{text.goals.none}</p>}
+      <ul className="goals">
+        {goals.map((goal) => (
+          <li key={goal.id}>
+            {text.goals.goal(goal.subjectName, goal.title, goal.targetDate)}
+            {text.goals.status[goal.status] && ` · ${text.goals.status[goal.status]}`}
+            {goal.overdue && <span className="overdue"> · {text.goals.overdue}</span>}
+          </li>
+        ))}
+      </ul>
+      {lessons.length === 0 ? (
+        <p className="hint">{text.goals.noLessons}</p>
+      ) : (
+        <form onSubmit={submit}>
+          <label>
+            {text.goals.lessonLabel}
+            <select value={lessonKey} onChange={(e) => setLessonKey(e.target.value)}>
+              {[...new Set(lessons.map((l) => l.subjectName))].map((subjectName) => (
+                <optgroup key={subjectName} label={subjectName}>
+                  {lessons
+                    .filter((l) => l.subjectName === subjectName)
+                    .map((l) => (
+                      <option key={l.key} value={l.key}>
+                        {text.goals.lessonOption(l.unitTitle, l.title)}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+          <label>
+            {text.goals.targetDateLabel}
+            <input type="date" required value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit">{text.goals.add}</button>
+        </form>
+      )}
+    </>
   );
 }
 

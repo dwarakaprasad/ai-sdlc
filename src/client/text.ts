@@ -1,7 +1,14 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
+import type { GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
+
+/** A YYYY-MM-DD date as e.g. "Tue, Oct 20". Read as a local day so it never shifts across time zones. */
+function formatDate(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
 
 /** All UI text, in one place for later translation (English only in v1). */
 export const text = {
@@ -38,7 +45,27 @@ export const text = {
   learnerHome: {
     heading: (name: string) => `Hi ${name}!`,
     noGoals: "There's nothing to work on yet. Your Parent will set your first Goal soon.",
+    goalsIntro: "Here's what to work on next:",
+    target: (date: string) => `Aim to finish by ${formatDate(date)}`,
+    catchUp: "This one's waiting for you. Let's catch up!",
     logout: "Log out",
+  },
+  goals: {
+    heading: "Goals",
+    none: "No Goals yet. Set one below.",
+    goal: (subjectName: string, title: string, targetDate: string) => `${subjectName}: ${title}, by ${formatDate(targetDate)}`,
+    /** Shown after a Goal's details; an active Goal needs no label. */
+    status: { active: undefined, met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string | undefined>,
+    overdue: "Overdue",
+    lessonLabel: "Lesson",
+    lessonOption: (unitTitle: string, title: string) => `${unitTitle} · ${title}`,
+    targetDateLabel: "Target Date",
+    add: "Set Goal",
+    noLessons: "This Learner's Curriculum has no Lessons to choose from. Check it's valid in the Curricula list.",
+    errors: {
+      unknownLesson: "Choose a Lesson from this Learner's Curriculum.",
+      invalidTargetDate: "Choose a Target Date.",
+    } as Record<string, string>,
   },
   parentArea: {
     heading: "Parent area",
