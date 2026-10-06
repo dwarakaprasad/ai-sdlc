@@ -28,6 +28,7 @@ export function lessonContext(lesson: TutorLesson, grade: string): string {
   return parts.join("\n\n");
 }
 
+/** Lines as a markdown bulleted list, for instructions to the LLM. */
 export function bullets(lines: string[]): string {
   return lines.map((line) => `- ${line}`).join("\n");
 }

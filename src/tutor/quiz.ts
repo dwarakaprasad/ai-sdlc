@@ -30,7 +30,7 @@ export function quizLength(learningObjectives: number): number {
 /**
  * Generates a new attempt's questions through structured output. Questions that don't hold together (a multiple-choice
  * answer key that isn't a choice, a number answer that isn't a number, an unknown Learning Objective) and any repeat of
- * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when too few questions are left.
+ * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when fewer than 10 are left, or they leave a Learning Objective untested.
  */
 export async function generateQuiz(llm: TutorLlm, lesson: TutorLesson, grade: string, earlierPrompts: string[]): Promise<GeneratedQuestion[]> {
   const length = quizLength(lesson.learningObjectives.length);
@@ -55,7 +55,11 @@ Each question's "objective" is the Learning Objective it tests, copied exactly.$
     questions.push(question);
   }
   if (questions.length < QUIZ_LENGTH.min) throw new LlmError("failed", `The generated quiz had only ${questions.length} usable new questions.`);
-  return questions.slice(0, length);
+  const quiz = questions.slice(0, length);
+  if (lesson.learningObjectives.some((objective) => !quiz.some((q) => q.objective === objective))) {
+    throw new LlmError("failed", "The generated quiz left a Learning Objective untested.");
+  }
+  return quiz;
 }
 
 function quizSchema(lesson: TutorLesson): JsonSchema {
@@ -143,7 +147,7 @@ const GRADE_SCHEMA: JsonSchema = {
 };
 
 /** What a finished attempt leads to: the Goal met, re-teaching then another attempt, or (past the attempt cap) a Flagged Goal. */
-export type AttemptOutcome = { passed: true; step: "goal-met" } | { passed: false; step: "remediation" | "ended" };
+export type AttemptOutcome = { passed: true; step: "goal-met" } | { passed: false; step: "re-teaching" | "ended" };
 
 /** The attempt numbered `attempt` (from 1) scored `correct` out of `total`. */
 export function afterAttempt(
@@ -151,7 +155,7 @@ export function afterAttempt(
   { passMark, maxQuizAttempts }: Pick<TeachingSettings, "passMark" | "maxQuizAttempts">,
 ): AttemptOutcome {
   if (correct * 100 >= passMark * total) return { passed: true, step: "goal-met" };
-  return { passed: false, step: attempt >= maxQuizAttempts ? "ended" : "remediation" };
+  return { passed: false, step: attempt >= maxQuizAttempts ? "ended" : "re-teaching" };
 }
 
 /** The Learning Objectives of the answers that were wrong, in Curriculum order, each once. */

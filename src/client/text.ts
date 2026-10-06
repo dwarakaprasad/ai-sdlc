@@ -64,7 +64,7 @@ export const text = {
   },
   quiz: {
     heading: "Lesson Quiz",
-    attempt: (number: number, max: number) => `Try ${number} of ${max}`,
+    attempt: (number: number, max: number) => `Quiz ${number} of ${max}`,
     start: "Start the Quiz",
     startAgain: "Start the new Quiz",
     writing: "The Tutor is writing your quiz…",

@@ -123,17 +123,19 @@ describe("The Lesson Quiz", () => {
     // Every number question (writing a ratio) wrong; every multiple-choice one (ratio language) right.
     const failed = await answerAll(await (await startQuiz(first)).json(), first, (q) => (q.type === "number" ? "99" : q.answer));
 
-    expect(failed).toMatchObject({ step: "remediation", score: { correct: 5, total: 10, passed: false } });
+    expect(failed).toMatchObject({ step: "re-teaching", score: { correct: 5, total: 10, passed: false } });
     expect(failed.feedback).toEqual({ correct: true, explanation: expect.any(String), correctAnswer: "for every" });
     expect(await parentGoals()).toMatchObject([{ status: "active" }]);
     // Coming back shows the finished attempt's score, and that re-teaching is next.
-    expect(await (await openSession()).json()).toMatchObject({ step: "remediation", quiz: { number: 1, score: { correct: 5, total: 10, passed: false } } });
+    expect(await (await openSession()).json()).toMatchObject({ step: "re-teaching", quiz: { number: 1, score: { correct: 5, total: 10, passed: false } } });
 
     llm.replyWith("Let's look at writing ratios again: 3 cats for every 2 dogs is 3:2. Next, a new quiz!");
-    const reTeaching = await turn(sessionId);
+    // The Tutor starts the re-teaching; anything the Learner sends with it isn't kept.
+    const reTeaching = await turn(sessionId, "hello?");
 
     expect(reTeaching.reply.join("")).toBe("Let's look at writing ratios again: 3 cats for every 2 dogs is 3:2. Next, a new quiz!");
     expect(reTeaching.done).toEqual({ step: "ready-for-quiz" });
+    expect((await (await openSession()).json()).messages.map((m: { content: string }) => m.content)).not.toContain("hello?");
     const task = taskOf(llm.requests.at(-1)!.system);
     expect(task).toContain(WRITE_A_RATIO);
     expect(task).not.toContain(RATIO_LANGUAGE);
@@ -174,7 +176,7 @@ describe("The Lesson Quiz", () => {
       }
     }
 
-    expect(results.map((r) => r.step)).toEqual(["remediation", "remediation", "ended"]);
+    expect(results.map((r) => r.step)).toEqual(["re-teaching", "re-teaching", "ended"]);
     expect(results[2].score).toEqual({ correct: 0, total: 10, passed: false });
     expect(await parentGoals()).toMatchObject([{ status: "flagged" }]);
     expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
@@ -199,7 +201,7 @@ describe("The Lesson Quiz", () => {
     // 7 of 10 right falls short of 80%...
     const first = tenQuestions("A");
     const short = await answerAll(await (await startQuiz(first)).json(), first, (q) => (["A1:", "A2:", "A3:"].some((t) => q.prompt.startsWith(t)) ? "99" : q.answer));
-    expect(short).toMatchObject({ step: "remediation", score: { correct: 7, total: 10, passed: false } });
+    expect(short).toMatchObject({ step: "re-teaching", score: { correct: 7, total: 10, passed: false } });
     llm.replyWith("One more look at writing ratios.");
     await turn(sessionId);
 
@@ -306,6 +308,16 @@ describe("Grading answers", () => {
     expect(await (await answer(choice.id, "For Every")).json()).toMatchObject({ feedback: { correct: true } });
     expect(await (await answer(number.id, "two")).json()).toEqual({ error: "invalidAnswer" });
   });
+
+  it("needs the question being answered", async () => {
+    const { learner, sessionId, startQuiz } = await readyForQuiz();
+    await startQuiz();
+
+    const res = await learner(`/api/learner/sessions/${sessionId}/answer`, { answer: "1" });
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "questionRequired" });
+  });
 });
 
 describe("Starting a Quiz attempt", () => {
@@ -332,6 +344,14 @@ describe("Starting a Quiz attempt", () => {
     const started = await (await startQuiz([...tenQuestions("A"), ...tenQuestions("B").slice(0, 5)])).json();
 
     expect(started.quiz.questions).toHaveLength(10);
+  });
+
+  it("fails when the questions leave a Learning Objective untested", async () => {
+    const { startQuiz, openSession } = await readyForQuiz();
+    const onlyWriting = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => numberQuestion(`W${n}: How many cats for ${n} dogs at 1:1?`, String(n)));
+
+    expect((await startQuiz(onlyWriting)).status).toBe(502);
+    expect(await (await openSession()).json()).toMatchObject({ step: "ready-for-quiz" });
   });
 
   it("can't start before the Understanding Check is done", async () => {

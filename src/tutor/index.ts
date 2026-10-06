@@ -6,7 +6,7 @@
  */
 
 import { LlmError, type ChatEvent, type ChatMessage, type JsonSchema } from "../llm/provider";
-import type { SessionMessage, SessionStep } from "../shared/api";
+import { TUTOR_STARTED_STEPS, type SessionMessage, type SessionStep } from "../shared/api";
 import { GUARDRAILS, bullets, lessonContext, type TutorLesson, type TutorLlm } from "./lesson";
 
 export { GUARDRAILS, type TutorLesson, type TutorLlm } from "./lesson";
@@ -39,7 +39,7 @@ export type TurnOutcome = { state: TutorState; flagged: boolean };
  * the Understanding Check needs one, and a Session at any other step takes no turns.
  */
 export function checkTurn(state: TutorState, learnerMessage: string | undefined): "ok" | "messageRequired" | "noTurnNow" {
-  if (state.step === "explanation" || state.step === "remediation") return "ok";
+  if (TUTOR_STARTED_STEPS.includes(state.step)) return "ok";
   if (state.step !== "understanding-check") return "noTurnNow";
   return learnerMessage === undefined ? "messageRequired" : "ok";
 }
@@ -57,7 +57,7 @@ export async function* tutorTurn(input: TutorTurnInput, llm: TutorLlm): AsyncGen
     yield* reply(TASKS.explain);
     return { state: { step: "understanding-check", reExplanations: 0 }, flagged: false };
   }
-  if (state.step === "remediation") {
+  if (state.step === "re-teaching") {
     yield* reply(TASKS.reTeach(input.missedObjectives));
     return { state: { ...state, step: "ready-for-quiz" }, flagged: false };
   }

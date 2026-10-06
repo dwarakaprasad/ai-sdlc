@@ -17,7 +17,7 @@ import type {
   TeachingSettings,
   TutorSession,
 } from "../shared/api";
-import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT } from "../shared/api";
+import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, TUTOR_STARTED_STEPS } from "../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
 import { MathText } from "./MathText";
@@ -519,7 +519,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
             <p className="error">
               {text.session.failed}{" "}
               {/* A failed answer is back in the answer box to send again; a failed Explanation or re-teaching needs this button. */}
-              {(session.step === "explanation" || session.step === "remediation") && (
+              {TUTOR_STARTED_STEPS.includes(session.step) && (
                 <button type="button" onClick={() => void takeTurn(session)}>
                   {text.session.retry}
                 </button>
@@ -538,7 +538,7 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
             </form>
           )}
           {!busy && session.step === "ready-for-quiz" && <QuizStart session={session} onStarted={setSession} onChanged={() => void open()} />}
-          {session.quiz && ["quiz", "remediation", "goal-met", "ended"].includes(session.step) && !failed && !busy && (
+          {session.quiz && session.step !== "ready-for-quiz" && !failed && !busy && (
             <QuizPanel
               session={session}
               quiz={session.quiz}
@@ -642,7 +642,7 @@ function QuizPanel({
         <p className="score">{text.quiz.score(quiz.score.correct, quiz.score.total)}</p>
         {session.step === "goal-met" && <p>{text.quiz.met}</p>}
         {session.step === "ended" && <p className="hint">{text.quiz.ended}</p>}
-        {session.step === "remediation" && (
+        {session.step === "re-teaching" && (
           <>
             <p>{text.quiz.reTeach}</p>
             <button type="button" onClick={onContinue}>

@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { LlmError } from "../llm/provider";
-import type { AnswerResult, QuizAttempt, SessionMessage, TurnEvents, TutorSession } from "../shared/api";
+import { ENDING_STEPS, TUTOR_STARTED_STEPS, type AnswerResult, type QuizAttempt, type SessionMessage, type TurnEvents, type TutorSession } from "../shared/api";
 import {
   START_STATE,
   afterAttempt,
@@ -77,7 +77,9 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (!found) return c.json({ error: "sessionNotFound" }, 404);
       const { session, goal } = found;
       const { message } = (await readJsonObject(c)) ?? {};
-      const learnerMessage = typeof message === "string" && message.trim() !== "" ? message.trim() : undefined;
+      // The Tutor starts the Explanation and the re-teaching itself, so a message sent then is neither answered nor kept.
+      const learnerMessage =
+        typeof message === "string" && message.trim() !== "" && !TUTOR_STARTED_STEPS.includes(session.step) ? message.trim() : undefined;
       const state = { step: session.step, reExplanations: session.reExplanations };
       const check = checkTurn(state, learnerMessage);
       if (check === "messageRequired") return c.json({ error: "messageRequired" }, 400);
@@ -123,7 +125,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
           // Only when the Session is still where this turn started: another turn (say, from a second tab) may have moved it on.
           const { changes } = tx
             .update(sessions)
-            .set({ ...outcome.state, endedAt: outcome.state.step === "ended" ? at : null })
+            .set({ ...outcome.state, endedAt: ENDING_STEPS.includes(outcome.state.step) ? at : null })
             .where(and(eq(sessions.id, session.id), eq(sessions.step, state.step), eq(sessions.reExplanations, state.reExplanations)))
             .run();
           if (changes === 0) return false;
@@ -190,6 +192,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       const question = questionsOf(db, attempt?.id).find((q) => q.answer === null);
       if (!attempt || !question) return c.json({ error: "noQuizNow" }, 409);
       const { questionId, answer } = (await readJsonObject(c)) ?? {};
+      if (typeof questionId !== "number") return c.json({ error: "questionRequired" }, 400);
       // The Learner answers the next unanswered question; any other was answered already, perhaps in another tab.
       if (questionId !== question.id) return c.json({ error: "sessionChanged" }, 409);
       if (typeof answer !== "string" || answer.trim() === "") return c.json({ error: "answerRequired" }, 400);
@@ -228,10 +231,10 @@ function saveAnswer(
     const outcome = afterAttempt({ correct, total, attempt: attempt.number }, teachingSettings(tx));
     tx.update(quizAttempts).set({ correct, passed: outcome.passed, finishedAt: at }).where(eq(quizAttempts.id, attempt.id)).run();
     tx.update(sessions)
-      .set({ step: outcome.step, endedAt: outcome.step === "remediation" ? null : at })
+      .set({ step: outcome.step, endedAt: ENDING_STEPS.includes(outcome.step) ? at : null })
       .where(eq(sessions.id, session.id))
       .run();
-    if (outcome.step !== "remediation") {
+    if (ENDING_STEPS.includes(outcome.step)) {
       tx.update(goals)
         .set({ status: outcome.passed ? "met" : "flagged" })
         .where(eq(goals.id, goal.id))

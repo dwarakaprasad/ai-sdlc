@@ -69,8 +69,14 @@ export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" 
  * waiting to start a Lesson Quiz attempt, answering one, hearing the missed Learning Objectives re-taught after a failed attempt,
  * the Goal met, or ended (its Goal became a Flagged Goal). The last two end the Session.
  */
-export const SESSION_STEPS = ["explanation", "understanding-check", "ready-for-quiz", "quiz", "remediation", "goal-met", "ended"] as const;
+export const SESSION_STEPS = ["explanation", "understanding-check", "ready-for-quiz", "quiz", "re-teaching", "goal-met", "ended"] as const;
 export type SessionStep = (typeof SESSION_STEPS)[number];
+
+/** Steps whose turn the Tutor starts on its own, without a message from the Learner. */
+export const TUTOR_STARTED_STEPS: readonly SessionStep[] = ["explanation", "re-teaching"];
+
+/** Steps that end the Session: its Goal is met, or became a Flagged Goal. */
+export const ENDING_STEPS: readonly SessionStep[] = ["goal-met", "ended"];
 export const MESSAGE_ROLES = ["learner", "tutor"] as const;
 export type MessageRole = (typeof MESSAGE_ROLES)[number];
 
