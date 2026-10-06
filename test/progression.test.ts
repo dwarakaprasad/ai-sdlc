@@ -219,16 +219,24 @@ describe("The Unit Test", () => {
     });
   });
 
-  it("is not created while a Lesson in the Unit is still to be met", async () => {
-    const { setGoal, passLesson, mathQueue } = await household();
+  it("is not created while a Lesson in the Unit is still to be met, which comes next instead", async () => {
+    const { setGoal, passLesson, mathCard, mathQueue } = await household();
     const goal = await setGoal(equivalentRatios);
 
     await passLesson(goal, equivalentRatios);
 
-    // Understanding ratios comes earlier in the Unit, so nothing follows Equivalent ratios but the next Unit.
+    // The Parent started the Unit at its second Lesson; the first, left behind, comes before the next Unit.
     expect(await mathQueue()).toEqual([
       { kind: "lesson", lessonKey: equivalentRatios, status: "met" },
-      { kind: "lesson", lessonKey: dividingFractions, status: "active" },
+      { kind: "lesson", lessonKey: ratios, status: "active" },
+    ]);
+
+    await passLesson((await mathCard())!, ratios);
+
+    expect(await mathQueue()).toEqual([
+      { kind: "lesson", lessonKey: equivalentRatios, status: "met" },
+      { kind: "lesson", lessonKey: ratios, status: "met" },
+      { kind: "unit-test", lessonKey: ratiosUnit, status: "active" },
     ]);
   });
 

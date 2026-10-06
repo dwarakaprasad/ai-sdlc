@@ -59,14 +59,15 @@ export type GoalContent = { subject: Subject; kind: GoalKind; title: string; lea
 /** What a Goal teaches and tests; undefined while its Lesson or Unit, or the Curriculum, is gone or invalid. */
 export function contentOfGoal(curriculaDir: string, learner: LearnerRow, goal: GoalRow): GoalContent | undefined {
   const subject = curriculumOf(curriculaDir, learner)?.subjects.find((s) => s.key === goal.subjectKey);
-  for (const unit of subject?.terms.flatMap((t) => t.units) ?? []) {
+  if (!subject) return undefined;
+  for (const unit of subject.terms.flatMap((t) => t.units)) {
     if (goal.kind === "unit-test" && unit.key === goal.curriculumKey) {
       // Two Lessons may share a Learning Objective; the Unit Test tests it once.
       const learningObjectives = [...new Set(unit.lessons.flatMap((l) => l.learningObjectives))];
-      return { subject: subject!, kind: goal.kind, title: unit.title, learningObjectives };
+      return { subject, kind: goal.kind, title: unit.title, learningObjectives };
     }
     const lesson = goal.kind === "lesson" ? unit.lessons.find((l) => l.key === goal.curriculumKey) : undefined;
-    if (lesson) return { subject: subject!, kind: goal.kind, title: lesson.title, learningObjectives: lesson.learningObjectives };
+    if (lesson) return { subject, kind: goal.kind, title: lesson.title, learningObjectives: lesson.learningObjectives };
   }
   return undefined;
 }
@@ -74,8 +75,8 @@ export function contentOfGoal(curriculaDir: string, learner: LearnerRow, goal: G
 /**
  * Marks a Goal met and moves its Subject's queue on, inside the caller's transaction. Once every Lesson of a met Lesson's
  * Unit is met, the Unit's Unit Test is the next Goal, ahead of anything the Parent queued. Otherwise, while the Parent has
- * queued nothing else still to be met, the next Lesson in Curriculum order (on into the next Term) that has no Goal yet
- * joins the end of the queue as the next Goal. A new Goal takes the met Goal's Target Date, or today if that has passed,
+ * queued nothing else still to be met, the first Lesson in Curriculum order from the Unit's start (on into the next Term)
+ * that has no Goal yet joins the end of the queue as the next Goal. A new Goal takes the met Goal's Target Date, or today if that has passed,
  * so it never starts overdue.
  */
 export function meetGoal(db: DbWriter, subject: Subject, goal: GoalRow, today: string): void {
@@ -95,18 +96,17 @@ export function meetGoal(db: DbWriter, subject: Subject, goal: GoalRow, today: s
   const targetDate = goal.targetDate < today ? today : goal.targetDate;
 
   if (unitTestDue) {
-    const unitTest: NewGoal = { learnerId: goal.learnerId, subjectKey: subject.key, curriculumKey: unit.key, kind: "unit-test", targetDate, status: "active" };
-    queue.splice(queue.findIndex((g) => "id" in g && g.id === goal.id) + 1, 0, unitTest);
-  } else if (!queue.some((g) => isToBeMet(g.status))) {
-    const lessons = units.flatMap((u) => u.lessons);
-    // After a Unit Test, the next Lesson is the one after its Unit's last.
-    const from = lessons.findIndex((l) => l.key === (goal.kind === "lesson" ? goal.curriculumKey : unit.lessons.at(-1)?.key));
-    const lesson = lessons.slice(from + 1).find((l) => !hasGoal(l.key));
-    if (!lesson) return;
-    queue.push(newLessonGoal(goal.learnerId, subject.key, lesson.key, targetDate));
-  } else {
+    queue.splice(queue.findIndex((g) => "id" in g && g.id === goal.id) + 1, 0, newGoal(goal.learnerId, subject.key, "unit-test", unit.key, targetDate));
+    saveQueue(db, queue);
     return;
   }
+  if (queue.some((g) => isToBeMet(g.status))) return;
+  const lessons = units.flatMap((u) => u.lessons);
+  // From the Unit's first Lesson, so one left behind (the Parent started the Unit part-way) comes before the next Unit.
+  const from = lessons.findIndex((l) => l.key === unit.lessons[0]?.key);
+  const lesson = lessons.slice(from).find((l) => !hasGoal(l.key));
+  if (!lesson) return;
+  queue.push(newGoal(goal.learnerId, subject.key, "lesson", lesson.key, targetDate));
   saveQueue(db, queue);
 }
 
@@ -181,7 +181,7 @@ export function parentGoalRoutes(deps: AppDeps) {
       // A new Goal joins the end of its Subject's queue, unless the Parent inserts it before one of that Subject's Goals.
       const place = beforeGoalId === undefined ? queue.length : queue.findIndex((goal) => "id" in goal && goal.id === beforeGoalId);
       if (place === -1) return c.json({ error: "invalidPosition" }, 400);
-      queue.splice(place, 0, newLessonGoal(learner.id, target.subjectKey, lessonKey, targetDate));
+      queue.splice(place, 0, newGoal(learner.id, target.subjectKey, "lesson", lessonKey, targetDate));
       const row = db.transaction((tx) => saveQueue(tx, queue))[place]!;
       return c.json(toGoal(row, target, localDate(now())), 201);
     })
@@ -258,8 +258,9 @@ function termOf(curriculaDir: string, learner: LearnerRow, termKey: string): { s
 type NewGoal = Omit<GoalRow, "id" | "position">;
 type QueueEntry = GoalRow | NewGoal;
 
-function newLessonGoal(learnerId: number, subjectKey: string, lessonKey: string, targetDate: string): NewGoal {
-  return { learnerId, subjectKey, curriculumKey: lessonKey, kind: "lesson", targetDate, status: "active" };
+/** An active Goal for a Lesson, or for a Unit's Unit Test with the Unit key. */
+function newGoal(learnerId: number, subjectKey: string, kind: GoalKind, curriculumKey: string, targetDate: string): NewGoal {
+  return { learnerId, subjectKey, curriculumKey, kind, targetDate, status: "active" };
 }
 
 /** One Learner's Goal queue for a Subject, in order. */
@@ -330,7 +331,7 @@ function spreadTargetDates(db: DbWriter, learner: LearnerRow, subject: Subject, 
     queue.forEach((goal, i) => {
       if ((places.get(goal.curriculumKey) ?? Infinity) < place) after = i;
     });
-    queue.splice(after + 1, 0, newLessonGoal(learner.id, subject.key, lessonKey, termEndDate));
+    queue.splice(after + 1, 0, newGoal(learner.id, subject.key, "lesson", lessonKey, termEndDate));
   }
 
   const termKeys = new Set([...termLessons, ...term.units.map((u) => u.key)]);

@@ -30,8 +30,9 @@ export function quizLength(learningObjectives: number): number {
 /**
  * Generates a new attempt's questions through structured output. Questions that don't hold together (a multiple-choice
  * answer key that isn't a choice, a number answer that isn't a number, an unknown Learning Objective) and any repeat of
- * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when fewer than 10 are left, or they leave a Learning Objective untested
- (for a Unit Test with more Learning Objectives than questions: unless every question tests a different one).
+ * `earlierPrompts`, the Session's earlier attempts, are dropped. Throws LlmError when fewer than 10 are left, or they leave
+ * a Learning Objective untested (for a Unit Test with more Learning Objectives than questions: unless every question tests
+ * a different one).
  */
 export async function generateQuiz(llm: TutorLlm, lesson: TutorLesson, grade: string, earlierPrompts: string[]): Promise<GeneratedQuestion[]> {
   const length = quizLength(lesson.learningObjectives.length);
