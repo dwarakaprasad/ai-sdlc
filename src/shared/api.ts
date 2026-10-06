@@ -63,3 +63,34 @@ export type GoalInput = { lessonKey: string; targetDate: string };
 
 /** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. */
 export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" | "overdue">;
+
+/**
+ * Where a Session is in the teaching steps: hearing the Explanation, talking through the Understanding Check,
+ * waiting for the Lesson Quiz, or ended (its Goal became a Flagged Goal).
+ */
+export const SESSION_STEPS = ["explanation", "understanding-check", "ready-for-quiz", "ended"] as const;
+export type SessionStep = (typeof SESSION_STEPS)[number];
+export const MESSAGE_ROLES = ["learner", "tutor"] as const;
+export type MessageRole = (typeof MESSAGE_ROLES)[number];
+
+/** One message of a Session transcript. */
+export type SessionMessage = { role: MessageRole; content: string };
+
+/** A Session as the Learner sees it (POST /api/learner/goals/:id/session): the transcript so far and the current step. */
+export type TutorSession = { id: number; subjectName: string; title: string; step: SessionStep; messages: SessionMessage[] };
+
+/**
+ * The Server-Sent Events of POST /api/learner/sessions/:id/turn, whose body is `{ message }`
+ * (no message for the turn that gives the Explanation): `text` pieces of the Tutor's reply as it's generated,
+ * then either `done` with the Session's next step, or `error`, in which case nothing from the turn is kept.
+ * After `llmFailed` the turn can be tried again; after `sessionChanged` another turn moved the Session on first, so reopen it.
+ */
+export type TurnEvents = { text: { text: string }; done: { step: SessionStep }; error: { error: "llmFailed" | "sessionChanged" } };
+
+/** GET and PUT /api/parent/settings/teaching. */
+export type TeachingSettings = { maxReExplanations: number };
+
+export const DEFAULT_TEACHING_SETTINGS: TeachingSettings = { maxReExplanations: 3 };
+
+/** The largest re-explanation cap the Parent can set. */
+export const MAX_RE_EXPLANATIONS_LIMIT = 10;

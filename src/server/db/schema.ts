@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { GOAL_KINDS, GOAL_STATUSES } from "../../shared/api";
+import { GOAL_KINDS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, SESSION_STEPS } from "../../shared/api";
 
 /** Who a login belongs to. */
 export const roles = ["parent", "learner"] as const;
@@ -37,6 +37,8 @@ export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey(),
   llmProvider: text("llm_provider").notNull(),
   llmModel: text("llm_model").notNull(),
+  /** How many times the Tutor may re-explain before the Goal becomes a Flagged Goal. */
+  maxReExplanations: integer("max_re_explanations").notNull().default(DEFAULT_TEACHING_SETTINGS.maxReExplanations),
 });
 
 /** Tokens used by one LLM call, dated by the server's local day so daily totals match the household's day. */
@@ -69,4 +71,28 @@ export const goals = sqliteTable("goals", {
   /** YYYY-MM-DD. */
   targetDate: text("target_date").notNull(),
   status: text("status", { enum: GOAL_STATUSES }).notNull(),
+});
+
+/** One sitting of a Learner working on a Goal with the Tutor; at most one per Goal is open (not ended) at a time. */
+export const sessions = sqliteTable("sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  /** Where the Session is in the teaching steps; resuming carries on from here. */
+  step: text("step", { enum: SESSION_STEPS }).notNull(),
+  reExplanations: integer("re_explanations").notNull(),
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  endedAt: integer("ended_at", { mode: "timestamp" }),
+});
+
+/** The Session transcript: every Learner and Tutor message, in order. */
+export const messages = sqliteTable("messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  role: text("role", { enum: MESSAGE_ROLES }).notNull(),
+  content: text("content").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

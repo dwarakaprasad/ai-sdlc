@@ -12,6 +12,9 @@ import type {
   LoggedInLearner,
   LearnerProfile,
   ParentStatus,
+  TeachingSettings,
+  TurnEvents,
+  TutorSession,
 } from "../shared/api";
 
 async function get<T>(path: string): Promise<T> {
@@ -58,4 +61,51 @@ export const api = {
   loginLearner: (learnerId: number, pin?: string) => post("/api/learner/login", { learnerId, pin }),
   logoutLearner: () => post("/api/learner/logout", {}),
   goalCards: () => get<GoalCard[]>("/api/learner/goals"),
+  teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
+  saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),
+  /** Starts a Session on a Goal, or resumes the open one. */
+  openSession: async (goalId: number) => {
+    const res = await post(`/api/learner/goals/${goalId}/session`, {});
+    if (!res.ok) throw new Error(`open session: ${res.status}`);
+    return (await res.json()) as TutorSession;
+  },
+  /**
+   * One Session turn: sends the Learner's message (none for the Explanation) and calls `onText` with each piece of
+   * the Tutor's reply as it streams in. Resolves to how the turn ended; a turn cut off without either counts as `llmFailed`.
+   */
+  turn: async (
+    sessionId: number,
+    message: string | undefined,
+    onText: (text: string) => void,
+  ): Promise<TurnEvents["done"] | TurnEvents["error"]> => {
+    const res = await post(`/api/learner/sessions/${sessionId}/turn`, message === undefined ? {} : { message });
+    if (res.status === 409) return { error: "sessionChanged" };
+    if (!res.ok || !res.body) return { error: "llmFailed" };
+    for await (const { event, data } of serverSentEvents(res.body)) {
+      if (event === "text") onText((data as TurnEvents["text"]).text);
+      else if (event === "done") return data as TurnEvents["done"];
+      else if (event === "error") return data as TurnEvents["error"];
+    }
+    return { error: "llmFailed" };
+  },
 };
+
+/** The events of a Server-Sent Events stream, each with its JSON data parsed. */
+async function* serverSentEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<{ event: string; data: unknown }> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return;
+    buffer += decoder.decode(value, { stream: true });
+    let end;
+    while ((end = buffer.indexOf("\n\n")) !== -1) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      const event = /^event: (.*)$/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (event && data !== undefined) yield { event, data: JSON.parse(data) };
+    }
+  }
+}

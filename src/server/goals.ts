@@ -1,7 +1,7 @@
 import { and, eq, max } from "drizzle-orm";
 import { Hono } from "hono";
 import { join } from "node:path";
-import { loadCurriculum, type Curriculum } from "../curriculum";
+import { loadCurriculum, type Curriculum, type Lesson, type Subject } from "../curriculum";
 import type { Goal, GoalCard, GoalKind, GoalStatus, LessonOption } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { readJsonObject } from "./http";
@@ -9,7 +9,7 @@ import { learnerFromPath, type LearnerRow } from "./learners";
 import { localDate } from "./usage";
 import { goals } from "./db/schema";
 
-type GoalRow = typeof goals.$inferSelect;
+export type GoalRow = typeof goals.$inferSelect;
 
 /** What a Goal's key points at in the Curriculum: a Lesson, or a Unit for its Unit Test. */
 type Target = { kind: GoalKind; subjectKey: string; subjectName: string; title: string };
@@ -42,6 +42,18 @@ function targetsFor(curriculaDir: string, learner: LearnerRow): Map<string, Targ
     }
   }
   return targets;
+}
+
+/** The Lesson a lesson Goal points at, with its Subject; undefined for a Unit Test or while the Lesson or Curriculum is gone or invalid. */
+export function lessonOfGoal(curriculaDir: string, learner: LearnerRow, goal: GoalRow): { subject: Subject; lesson: Lesson } | undefined {
+  if (goal.kind !== "lesson") return undefined;
+  for (const subject of curriculumOf(curriculaDir, learner)?.subjects ?? []) {
+    for (const unit of subject.terms.flatMap((t) => t.units)) {
+      const lesson = unit.lessons.find((l) => l.key === goal.curriculumKey);
+      if (lesson) return { subject, lesson };
+    }
+  }
+  return undefined;
 }
 
 /** Overdue: the Target Date has passed and the Goal is still to be met. Never stored, so it is always current. */

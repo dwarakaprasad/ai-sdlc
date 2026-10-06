@@ -1,5 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import type { GoalStatus } from "../shared/api";
+import { MAX_RE_EXPLANATIONS_LIMIT, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
@@ -48,7 +48,28 @@ export const text = {
     goalsIntro: "Here's what to work on next:",
     target: (date: string) => `Aim to finish by ${formatDate(date)}`,
     catchUp: "This one's waiting for you. Let's catch up!",
+    start: "Start",
     logout: "Log out",
+  },
+  session: {
+    back: "Back to my Goals",
+    tutor: "Tutor",
+    you: "You",
+    thinking: "The Tutor is thinking…",
+    messageLabel: "Your answer",
+    send: "Send",
+    failed: "The Tutor couldn't reply just then.",
+    retry: "Try again",
+    readyForQuiz: "Great work! Your Lesson Quiz is coming soon.",
+    ended: "That's all for this Lesson today. Your Parent will help you with it next.",
+  },
+  teachingSettings: {
+    heading: "Teaching",
+    maxReExplanationsLabel: "Re-explanations before a Goal is flagged",
+    hint: "When the Tutor has re-explained this many times and the Learner still doesn't understand, the Goal is handed back to you as a Flagged Goal.",
+    save: "Save",
+    saved: "Saved.",
+    invalid: `Enter a whole number from 0 to ${MAX_RE_EXPLANATIONS_LIMIT}.`,
   },
   goals: {
     heading: "Goals",
