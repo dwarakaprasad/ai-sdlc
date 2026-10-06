@@ -6,7 +6,7 @@
  */
 
 import { LlmError, type ChatEvent, type ChatMessage, type JsonSchema } from "../llm/provider";
-import { TUTOR_STARTED_STEPS, type SessionMessage, type SessionStep } from "../shared/api";
+import { TUTOR_STARTED_STEPS, type GoalKind, type SessionMessage, type SessionStep } from "../shared/api";
 import { GUARDRAILS, bullets, lessonContext, type TutorLesson, type TutorLlm } from "./lesson";
 
 export { GUARDRAILS, type TutorLesson, type TutorLlm } from "./lesson";
@@ -15,7 +15,10 @@ export * from "./quiz";
 /** The part of a Session the Tutor reads and moves on. */
 export type TutorState = { step: SessionStep; reExplanations: number };
 
-export const START_STATE: TutorState = { step: "explanation", reExplanations: 0 };
+/** Where a new Session starts: a Lesson with its Explanation, a Unit Test straight at its first attempt, with nothing to explain first. */
+export function startState(kind: GoalKind): TutorState {
+  return { step: kind === "unit-test" ? "ready-for-quiz" : "explanation", reExplanations: 0 };
+}
 
 export type TutorTurnInput = {
   state: TutorState;
@@ -121,7 +124,7 @@ const TASKS = {
   handBack:
     "The Learner is still finding this tricky, so you'll stop here for today and their Parent will help them with it. End kindly: praise their effort, tell them it's fine to find things hard, and that they'll come back to it. Don't explain further or ask a question.",
   reTeach: (missed: string[]) =>
-    `The Learner just finished a quiz on this Lesson and didn't reach the pass mark. Encourage them briefly, then re-teach only these Learning Objectives, which they got wrong, in a new way with a worked example:\n${bullets(missed)}\nDon't re-teach the other Learning Objectives. End by telling them a new quiz with different questions comes next. Don't ask a question.`,
+    `The Learner just finished a quiz and didn't reach the pass mark. Encourage them briefly, then re-teach only these Learning Objectives, which they got wrong, in a new way with a worked example:\n${bullets(missed)}\nDon't re-teach the other Learning Objectives. End by telling them a new quiz with different questions comes next. Don't ask a question.`,
 };
 
 function systemPrompt(lesson: TutorLesson, grade: string, task: string): string {

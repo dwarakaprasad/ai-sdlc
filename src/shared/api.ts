@@ -74,8 +74,8 @@ export type SpreadInput = { termKey: string; termEndDate: string };
 /** Body of PUT /api/parent/learners/:id/goals/order: one Subject's whole queue, every Goal once, in its new order. */
 export type GoalOrder = { goalIds: number[] };
 
-/** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. */
-export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" | "overdue">;
+/** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. A Unit Test's title is its Unit's. */
+export type GoalCard = Pick<Goal, "id" | "kind" | "subjectName" | "title" | "targetDate" | "overdue">;
 
 /**
  * Where a Session is in the teaching steps: hearing the Explanation, talking through the Understanding Check,
@@ -121,9 +121,11 @@ export type QuizAttempt = { number: number; maxAttempts: number; questions: Quiz
 /**
  * A Session as the Learner sees it (POST /api/learner/goals/:id/session): the transcript so far, the current step,
  * and the Session's latest Quiz attempt, if it has one (in progress, or finished with its score).
+ * A Unit Test's Session is titled with its Unit, and starts at "ready-for-quiz": it has no Explanation or Understanding Check.
  */
 export type TutorSession = {
   id: number;
+  kind: GoalKind;
   subjectName: string;
   title: string;
   step: SessionStep;

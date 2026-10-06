@@ -112,8 +112,9 @@ describe("The Lesson Quiz", () => {
       score: { correct: 10, total: 10, passed: true },
     });
     expect(llm.requests.length).toBe(llmCallsBeforeAnswers);
-    expect(await parentGoals()).toMatchObject([{ status: "met" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    // The next Lesson becomes the current Goal (see progression.test.ts).
+    expect(await parentGoals()).toMatchObject([{ status: "met" }, { title: "Equivalent ratios", status: "active" }]);
+    expect(await (await learner("/api/learner/goals")).json()).toMatchObject([{ title: "Equivalent ratios" }]);
     expect((await openSession()).status).toBe(409);
   });
 
@@ -147,7 +148,7 @@ describe("The Lesson Quiz", () => {
     const passed = await answerAll(retry, second);
 
     expect(passed).toMatchObject({ step: "goal-met", score: { correct: 10, total: 10, passed: true } });
-    expect(await parentGoals()).toMatchObject([{ status: "met" }]);
+    expect(await parentGoals()).toMatchObject([{ status: "met" }, { status: "active" }]);
   });
 
   it("never asks a question again in a later attempt", async () => {
@@ -210,7 +211,7 @@ describe("The Lesson Quiz", () => {
     const enough = await answerAll(await (await startQuiz(second)).json(), second, (q) => (["B1:", "B2:"].some((t) => q.prompt.startsWith(t)) ? "99" : q.answer));
 
     expect(enough).toMatchObject({ step: "goal-met", score: { correct: 8, total: 10, passed: true } });
-    expect(await parentGoals()).toMatchObject([{ status: "met" }]);
+    expect(await parentGoals()).toMatchObject([{ status: "met" }, { status: "active" }]);
   });
 });
 

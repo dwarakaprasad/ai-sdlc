@@ -1,9 +1,14 @@
 /** What every part of the Tutor shares: the Lesson being taught, the LLM it teaches through, and the instructions every call carries. */
 
 import type { ChatEvent, ChatMessage, JsonSchema, StructuredResult } from "../llm/provider";
+import type { GoalKind } from "../shared/api";
 
-/** The Lesson being taught, with what the Curriculum says about how to teach its Subject. */
+/**
+ * The Lesson being taught, with what the Curriculum says about how to teach its Subject. For a Unit Test it is the Unit:
+ * its title, and every Learning Objective of its Lessons.
+ */
 export type TutorLesson = {
+  kind: GoalKind;
   subjectName: string;
   title: string;
   learningObjectives: string[];
@@ -19,7 +24,9 @@ export interface TutorLlm {
 /** What every Tutor instruction carries: the Lesson, its Learning Objectives, the Tutoring Instructions, the grade and the guardrails. */
 export function lessonContext(lesson: TutorLesson, grade: string): string {
   const parts = [
-    `The Learner is in grade ${grade}. The Lesson is "${lesson.title}" in ${lesson.subjectName}.`,
+    lesson.kind === "unit-test"
+      ? `The Learner is in grade ${grade}. This is the Unit Test for the Unit "${lesson.title}" in ${lesson.subjectName}, covering every Lesson of the Unit.`
+      : `The Learner is in grade ${grade}. The Lesson is "${lesson.title}" in ${lesson.subjectName}.`,
     `Learning Objectives (what the Learner must be able to do):\n${bullets(lesson.learningObjectives)}`,
   ];
   if (lesson.tutoringInstructions) {

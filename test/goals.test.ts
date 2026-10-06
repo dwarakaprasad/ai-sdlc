@@ -133,8 +133,8 @@ describe("Goal cards on the Learner home screen", () => {
     expect(res.status).toBe(200);
     // Math's current Goal is the first in its queue, even though a later one has an earlier Target Date.
     expect(await res.json()).toEqual([
-      { id: expect.any(Number), subjectName: "ELA", title: "Main idea", targetDate: "2026-10-12", overdue: false },
-      { id: expect.any(Number), subjectName: "Math", title: "Understanding ratios", targetDate: "2026-10-20", overdue: false },
+      { id: expect.any(Number), kind: "lesson", subjectName: "ELA", title: "Main idea", targetDate: "2026-10-12", overdue: false },
+      { id: expect.any(Number), kind: "lesson", subjectName: "Math", title: "Understanding ratios", targetDate: "2026-10-20", overdue: false },
     ]);
   });
 
