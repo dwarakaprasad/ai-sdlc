@@ -1,4 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
+import type { GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
@@ -53,9 +54,9 @@ export const text = {
     heading: "Goals",
     none: "No Goals yet. Set one below.",
     goal: (subjectName: string, title: string, targetDate: string) => `${subjectName}: ${title}, by ${formatDate(targetDate)}`,
-    status: { active: "", met: "Met", flagged: "Flagged", skipped: "Skipped" } as Record<string, string>,
+    /** Shown after a Goal's details; an active Goal needs no label. */
+    status: { active: undefined, met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string | undefined>,
     overdue: "Overdue",
-    addHeading: "Set a Goal",
     lessonLabel: "Lesson",
     lessonOption: (unitTitle: string, title: string) => `${unitTitle} · ${title}`,
     targetDateLabel: "Target Date",

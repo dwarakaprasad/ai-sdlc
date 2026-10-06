@@ -20,6 +20,12 @@ export function findLearner(db: Db, id: number): LearnerRow | undefined {
   return db.select().from(learners).where(eq(learners.id, id)).get();
 }
 
+/** The Learner named by the `:id` path parameter, if it is a number and such a Learner exists. */
+export function learnerFromPath(db: Db, c: Context): LearnerRow | undefined {
+  const id = c.req.param("id") ?? "";
+  return /^\d+$/.test(id) ? findLearner(db, Number(id)) : undefined;
+}
+
 export function hasPin(learner: LearnerRow): boolean {
   return learner.pinHash !== null;
 }
@@ -27,11 +33,6 @@ export function hasPin(learner: LearnerRow): boolean {
 /** The Parent's Learner management, mounted under the Parent's protected routes. */
 export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
   const isValidCurriculum = (id: string) => loadCurricula(curriculaDir).some((r) => r.ok && r.id === id);
-  const learnerFromPath = (c: Context) => {
-    const id = c.req.param("id") ?? "";
-    return /^\d+$/.test(id) ? findLearner(db, Number(id)) : undefined;
-  };
-
   return new Hono()
     .get("/", (c) => c.json(allLearners(db).map(toLearner)))
     .post("/", async (c) => {
@@ -47,7 +48,7 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
       return c.json(toLearner(row), 201);
     })
     .put("/:id", async (c) => {
-      const existing = learnerFromPath(c);
+      const existing = learnerFromPath(db, c);
       if (!existing) return c.json({ error: "learnerNotFound" }, 404);
       const input = await readLearnerInput(c);
       if ("error" in input) return c.json(input, 400);
@@ -66,7 +67,7 @@ export function parentLearnerRoutes({ db, curriculaDir }: AppDeps) {
       return c.json(toLearner(row!));
     })
     .delete("/:id", (c) => {
-      const existing = learnerFromPath(c);
+      const existing = learnerFromPath(db, c);
       if (!existing) return c.json({ error: "learnerNotFound" }, 404);
       db.delete(learners).where(eq(learners.id, existing.id)).run();
       return c.body(null, 204);

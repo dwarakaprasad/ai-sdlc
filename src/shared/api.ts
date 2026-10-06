@@ -33,8 +33,10 @@ export type ConnectionTest = { ok: true } | { ok: false; error: LlmErrorKind; en
 /** One day of GET /api/parent/usage (most recent day first). */
 export type DailyUsage = { date: string; calls: number; inputTokens: number; outputTokens: number };
 
-export type GoalKind = "lesson" | "unit-test";
-export type GoalStatus = "active" | "met" | "flagged" | "skipped";
+export const GOAL_KINDS = ["lesson", "unit-test"] as const;
+export type GoalKind = (typeof GOAL_KINDS)[number];
+export const GOAL_STATUSES = ["active", "met", "flagged", "skipped"] as const;
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
 
 /**
  * A Goal as the Parent sees it (GET /api/parent/learners/:id/goals), in queue order per Subject.

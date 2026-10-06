@@ -1,11 +1,11 @@
 import { and, eq, max } from "drizzle-orm";
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { join } from "node:path";
 import { loadCurriculum, type Curriculum } from "../curriculum";
-import type { Goal, GoalCard, GoalKind, LessonOption } from "../shared/api";
+import type { Goal, GoalCard, GoalKind, GoalStatus, LessonOption } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { readJsonObject } from "./http";
-import { findLearner, type LearnerRow } from "./learners";
+import { learnerFromPath, type LearnerRow } from "./learners";
 import { localDate } from "./usage";
 import { goals } from "./db/schema";
 
@@ -46,7 +46,12 @@ function targetsFor(curriculaDir: string, learner: LearnerRow): Map<string, Targ
 
 /** Overdue: the Target Date has passed and the Goal is still to be met. Never stored, so it is always current. */
 function isOverdue(row: GoalRow, today: string): boolean {
-  return (row.status === "active" || row.status === "flagged") && row.targetDate < today;
+  return isToBeMet(row.status) && row.targetDate < today;
+}
+
+/** Active or Flagged: neither met nor skipped. */
+function isToBeMet(status: GoalStatus): boolean {
+  return status === "active" || status === "flagged";
 }
 
 /** A Learner's Goals with their Lesson or Unit titles, each Subject's queue in order. */
@@ -63,15 +68,16 @@ function goalsOf({ db, curriculaDir, now }: AppDeps, learner: LearnerRow): Goal[
 }
 
 /**
- * The Learner's Goal cards: each Subject's current Goal (the first active one in its queue), earliest Target Date first.
- * A Flagged Goal waits for the Parent, so it is never a card.
+ * The Learner's Goal cards: each Subject's current Goal (the first in its queue still to be met), earliest Target Date first.
+ * A Flagged Goal waits for the Parent, so its Subject shows no card until the Parent resolves it.
  */
 export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
   const current = new Map<string, Goal>();
   for (const goal of goalsOf(deps, learner)) {
-    if (goal.status === "active" && !current.has(goal.subjectKey)) current.set(goal.subjectKey, goal);
+    if (isToBeMet(goal.status) && !current.has(goal.subjectKey)) current.set(goal.subjectKey, goal);
   }
   return [...current.values()]
+    .filter((goal) => goal.status === "active")
     .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.subjectName.localeCompare(b.subjectName))
     .map(({ id, subjectName, title, targetDate, overdue }) => ({ id, subjectName, title, targetDate, overdue }));
 }
@@ -79,24 +85,20 @@ export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
 /** The Parent's Goals for one Learner, mounted under the Parent's protected routes at /learners/:id. */
 export function parentGoalRoutes(deps: AppDeps) {
   const { db, curriculaDir, now } = deps;
-  const learnerFromPath = (c: Context) => {
-    const id = c.req.param("id") ?? "";
-    return /^\d+$/.test(id) ? findLearner(db, Number(id)) : undefined;
-  };
 
   return new Hono()
     .get("/lessons", (c) => {
-      const learner = learnerFromPath(c);
+      const learner = learnerFromPath(db, c);
       if (!learner) return c.json({ error: "learnerNotFound" }, 404);
       return c.json(lessonsFor(curriculaDir, learner));
     })
     .get("/goals", (c) => {
-      const learner = learnerFromPath(c);
+      const learner = learnerFromPath(db, c);
       if (!learner) return c.json({ error: "learnerNotFound" }, 404);
       return c.json(goalsOf(deps, learner));
     })
     .post("/goals", async (c) => {
-      const learner = learnerFromPath(c);
+      const learner = learnerFromPath(db, c);
       if (!learner) return c.json({ error: "learnerNotFound" }, 404);
       const body = await readJsonObject(c);
       if (!body) return c.json({ error: "invalidBody" }, 400);
