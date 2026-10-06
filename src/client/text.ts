@@ -1,5 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import { MAX_RE_EXPLANATIONS_LIMIT, type GoalStatus } from "../shared/api";
+import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalStatus } from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
@@ -60,16 +60,51 @@ export const text = {
     send: "Send",
     failed: "The Tutor couldn't reply just then.",
     retry: "Try again",
-    readyForQuiz: "Great work! Your Lesson Quiz is coming soon.",
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
+  },
+  quiz: {
+    heading: "Lesson Quiz",
+    attempt: (number: number, max: number) => `Quiz ${number} of ${max}`,
+    start: "Start the Quiz",
+    startAgain: "Start the new Quiz",
+    writing: "The Tutor is writing your quiz…",
+    question: (n: number, total: number) => `Question ${n} of ${total}`,
+    numberLabel: "Your answer",
+    numberHint: "A number, like 12, 0.5 or 3/4.",
+    writtenLabel: "Your answer",
+    submit: "Check my answer",
+    checking: "Checking…",
+    right: "That's right!",
+    wrong: "Not quite.",
+    correctAnswer: (answer: string) => `The answer is: ${answer}`,
+    next: "Next question",
+    seeScore: "See my score",
+    score: (correct: number, total: number) => `You got ${correct} out of ${total} right.`,
+    met: "You've mastered this Lesson. Goal met!",
+    reTeach: "Let's look again at the parts you missed, then try a new quiz.",
+    continue: "Continue",
+    ended: "You worked really hard on this quiz. That's all for this Lesson today, and your Parent will help you with it next.",
+    failed: "The Tutor couldn't do that just then.",
+    errors: {
+      invalidAnswer: "Choose one of the answers, or for a number question, type a number.",
+      answerRequired: "Type your answer first.",
+    } as Record<string, string>,
   },
   teachingSettings: {
     heading: "Teaching",
     maxReExplanationsLabel: "Re-explanations before a Goal is flagged",
     hint: "When the Tutor has re-explained this many times and the Learner still doesn't understand, the Goal is handed back to you as a Flagged Goal.",
+    passMarkLabel: "Pass mark (%)",
+    passMarkHint: "The share of a Lesson Quiz's answers that must be right for the Goal to be met.",
+    maxQuizAttemptsLabel: "Quiz attempts before a Goal is flagged",
+    maxQuizAttemptsHint: "After this many attempts below the pass mark, the Goal is handed back to you as a Flagged Goal.",
     save: "Save",
     saved: "Saved.",
-    invalid: `Enter a whole number from 0 to ${MAX_RE_EXPLANATIONS_LIMIT}.`,
+    errors: {
+      invalidMaxReExplanations: `Re-explanations must be a whole number from 0 to ${MAX_RE_EXPLANATIONS_LIMIT}.`,
+      invalidPassMark: "The pass mark must be a whole number from 1 to 100.",
+      invalidMaxQuizAttempts: `Quiz attempts must be a whole number from 1 to ${MAX_QUIZ_ATTEMPTS_LIMIT}.`,
+    } as Record<string, string>,
   },
   goals: {
     heading: "Goals",

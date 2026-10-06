@@ -1,9 +1,16 @@
 import { Hono } from "hono";
 import { LlmError } from "../llm/provider";
 import { DEFAULT_LLM_SETTINGS, isProviderId, providerInfo } from "../shared/llm";
-import { DEFAULT_TEACHING_SETTINGS, MAX_RE_EXPLANATIONS_LIMIT, type ConnectionTest, type LlmSettings, type TeachingSettings } from "../shared/api";
+import {
+  DEFAULT_TEACHING_SETTINGS,
+  MAX_QUIZ_ATTEMPTS_LIMIT,
+  MAX_RE_EXPLANATIONS_LIMIT,
+  type ConnectionTest,
+  type LlmSettings,
+  type TeachingSettings,
+} from "../shared/api";
 import type { AppDeps } from "./deps";
-import type { Db } from "./db";
+import type { Db, DbReader } from "./db";
 import { settings } from "./db/schema";
 import { readJsonObject } from "./http";
 import { appLlm } from "./llm";
@@ -17,10 +24,19 @@ export function llmSettings(db: Db): LlmSettings {
 }
 
 /** How the Tutor teaches: the Parent's choices, or the defaults until they make them. */
-export function teachingSettings(db: Db): TeachingSettings {
+export function teachingSettings(db: DbReader): TeachingSettings {
   const row = db.select().from(settings).get();
-  return row ? { maxReExplanations: row.maxReExplanations } : { ...DEFAULT_TEACHING_SETTINGS };
+  if (!row) return { ...DEFAULT_TEACHING_SETTINGS };
+  const { maxReExplanations, passMark, maxQuizAttempts } = row;
+  return { maxReExplanations, passMark, maxQuizAttempts };
 }
+
+/** Each teaching setting's allowed whole-number range, and the error a value outside it gets. */
+const TEACHING_RANGES: { [K in keyof TeachingSettings]: { min: number; max: number; error: string } } = {
+  maxReExplanations: { min: 0, max: MAX_RE_EXPLANATIONS_LIMIT, error: "invalidMaxReExplanations" },
+  passMark: { min: 1, max: 100, error: "invalidPassMark" },
+  maxQuizAttempts: { min: 1, max: MAX_QUIZ_ATTEMPTS_LIMIT, error: "invalidMaxQuizAttempts" },
+};
 
 /** Saves some of the Parent's settings; the first save fills the rest with their defaults. */
 function saveSettings(db: Db, values: Partial<typeof settings.$inferInsert>) {
@@ -36,11 +52,17 @@ export function parentSettingsRoutes(deps: AppDeps) {
   return new Hono()
     .get("/teaching", (c) => c.json(teachingSettings(db)))
     .put("/teaching", async (c) => {
-      const { maxReExplanations } = (await readJsonObject(c)) ?? {};
-      if (typeof maxReExplanations !== "number" || !Number.isInteger(maxReExplanations) || maxReExplanations < 0 || maxReExplanations > MAX_RE_EXPLANATIONS_LIMIT) {
-        return c.json({ error: "invalidMaxReExplanations" }, 400);
+      // Only the settings sent change, and nothing is saved unless every one sent is valid.
+      const body = (await readJsonObject(c)) ?? {};
+      const changes: Partial<TeachingSettings> = {};
+      for (const name of Object.keys(TEACHING_RANGES) as (keyof TeachingSettings)[]) {
+        if (!(name in body)) continue;
+        const value = body[name];
+        const { min, max, error } = TEACHING_RANGES[name];
+        if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) return c.json({ error }, 400);
+        changes[name] = value;
       }
-      saveSettings(db, { maxReExplanations });
+      if (Object.keys(changes).length > 0) saveSettings(db, changes);
       return c.json(teachingSettings(db));
     })
     .get("/llm", (c) => c.json(llmSettings(db)))

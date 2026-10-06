@@ -145,3 +145,39 @@ textarea {
 main:has(.session) {
   max-width: 40rem;
 }
+.quiz .prompt {
+  font-size: 1.125rem;
+  line-height: 1.5;
+  margin: 0.5rem 0 1rem;
+}
+.quiz .choices {
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.quiz .choice {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.quiz .feedback {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+}
+.quiz .feedback.right {
+  background: #e6f4ea;
+}
+.quiz .feedback.wrong {
+  background: #fdecea;
+}
+.quiz .score {
+  font-size: 1.25rem;
+  font-weight: 600;
+}

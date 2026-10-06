@@ -1,24 +1,21 @@
 /**
  * The Tutor: the teaching steps of a Session, as a state machine driven by the LLM.
  * A Session's state, the Lesson, the Learner's grade, the transcript and the Learner's latest message go in;
- * a streamed Tutor reply and the Session's next state come out. It knows nothing of HTTP or the database.
+ * a streamed Tutor reply and the Session's next state come out. The Lesson Quiz is in ./quiz.
+ * It knows nothing of HTTP or the database.
  */
 
-import { LlmError, type ChatEvent, type ChatMessage, type JsonSchema, type StructuredResult } from "../llm/provider";
-import type { SessionMessage, SessionStep } from "../shared/api";
+import { LlmError, type ChatEvent, type ChatMessage, type JsonSchema } from "../llm/provider";
+import { TUTOR_STARTED_STEPS, type SessionMessage, type SessionStep } from "../shared/api";
+import { GUARDRAILS, bullets, lessonContext, type TutorLesson, type TutorLlm } from "./lesson";
+
+export { GUARDRAILS, type TutorLesson, type TutorLlm } from "./lesson";
+export * from "./quiz";
 
 /** The part of a Session the Tutor reads and moves on. */
 export type TutorState = { step: SessionStep; reExplanations: number };
 
 export const START_STATE: TutorState = { step: "explanation", reExplanations: 0 };
-
-/** The Lesson being taught, with what the Curriculum says about how to teach its Subject. */
-export type TutorLesson = {
-  subjectName: string;
-  title: string;
-  learningObjectives: string[];
-  tutoringInstructions: string | undefined;
-};
 
 export type TutorTurnInput = {
   state: TutorState;
@@ -26,27 +23,23 @@ export type TutorTurnInput = {
   grade: string;
   /** The Session's messages so far, oldest first. */
   transcript: SessionMessage[];
-  /** Absent only for the turn that gives the Explanation. */
+  /** Absent for the turns the Tutor starts: the Explanation and the re-teaching after a failed Quiz attempt. */
   learnerMessage: string | undefined;
   /** Re-explanations allowed before the Goal becomes a Flagged Goal. */
   maxReExplanations: number;
+  /** The Learning Objectives the last Quiz attempt got wrong, which the re-teaching covers; empty before any attempt. */
+  missedObjectives: string[];
 };
 
 /** How a turn ended: the Session's next state, and whether its Goal is now a Flagged Goal. */
 export type TurnOutcome = { state: TutorState; flagged: boolean };
 
-/** The LLM as the Tutor needs it; the app's usage-recording LLM fits. */
-export interface TutorLlm {
-  chat(call: { system: string; messages: ChatMessage[] }): AsyncIterable<ChatEvent>;
-  structured(call: { system: string; messages: ChatMessage[]; schema: JsonSchema }): Promise<StructuredResult>;
-}
-
 /**
- * Whether a turn can be taken now, before any LLM call: the Explanation needs no message,
- * the Understanding Check needs one, and a Session waiting for the Quiz or ended takes no turns.
+ * Whether a turn can be taken now, before any LLM call: the Explanation and the re-teaching need no message,
+ * the Understanding Check needs one, and a Session at any other step takes no turns.
  */
 export function checkTurn(state: TutorState, learnerMessage: string | undefined): "ok" | "messageRequired" | "noTurnNow" {
-  if (state.step === "explanation") return "ok";
+  if (TUTOR_STARTED_STEPS.includes(state.step)) return "ok";
   if (state.step !== "understanding-check") return "noTurnNow";
   return learnerMessage === undefined ? "messageRequired" : "ok";
 }
@@ -63,6 +56,10 @@ export async function* tutorTurn(input: TutorTurnInput, llm: TutorLlm): AsyncGen
   if (state.step === "explanation") {
     yield* reply(TASKS.explain);
     return { state: { step: "understanding-check", reExplanations: 0 }, flagged: false };
+  }
+  if (state.step === "re-teaching") {
+    yield* reply(TASKS.reTeach(input.missedObjectives));
+    return { state: { ...state, step: "ready-for-quiz" }, flagged: false };
   }
 
   const verdict = await understandingVerdict(llm, lesson, grade, messages);
@@ -90,8 +87,13 @@ function conversation({ transcript, learnerMessage }: TutorTurnInput): ChatMessa
   const messages: ChatMessage[] = [{ role: "user", content: KICK_OFF }];
   for (const { role, content } of transcript) messages.push({ role: role === "learner" ? "user" : "assistant", content });
   if (learnerMessage !== undefined) messages.push({ role: "user", content: learnerMessage });
+  // The re-teaching follows the Quiz rather than a message, and providers need the conversation to end with the user.
+  if (messages.at(-1)?.role === "assistant") messages.push({ role: "user", content: QUIZ_DONE });
   return messages;
 }
+
+/** Stands in for the Learner after a Quiz attempt, whose answers aren't part of the transcript. */
+const QUIZ_DONE = "I've finished the quiz.";
 
 async function* streamText(events: AsyncIterable<ChatEvent>): AsyncGenerator<string, void> {
   for await (const event of events) if (event.type === "text") yield event.text;
@@ -118,27 +120,9 @@ const TASKS = {
     }. Don't repeat any earlier explanation. Then ask one short question that checks they understood.`,
   handBack:
     "The Learner is still finding this tricky, so you'll stop here for today and their Parent will help them with it. End kindly: praise their effort, tell them it's fine to find things hard, and that they'll come back to it. Don't explain further or ask a question.",
+  reTeach: (missed: string[]) =>
+    `The Learner just finished a quiz on this Lesson and didn't reach the pass mark. Encourage them briefly, then re-teach only these Learning Objectives, which they got wrong, in a new way with a worked example:\n${bullets(missed)}\nDon't re-teach the other Learning Objectives. End by telling them a new quiz with different questions comes next. Don't ask a question.`,
 };
-
-/** What every Tutor instruction carries: the Lesson, its Learning Objectives, the Tutoring Instructions, the grade and the guardrails. */
-function lessonContext(lesson: TutorLesson, grade: string): string {
-  const parts = [
-    `The Learner is in grade ${grade}. The Lesson is "${lesson.title}" in ${lesson.subjectName}.`,
-    `Learning Objectives (what the Learner must be able to do):\n${lesson.learningObjectives.map((o) => `- ${o}`).join("\n")}`,
-  ];
-  if (lesson.tutoringInstructions) {
-    parts.push(`Tutoring Instructions for ${lesson.subjectName} (always teach this way):\n${lesson.tutoringInstructions}`);
-  }
-  return parts.join("\n\n");
-}
-
-/** Always part of the Tutor's instructions: on-Lesson, age-appropriate, and never asking for personal information. */
-export const GUARDRAILS = `Rules you always follow:
-- Stay on this Lesson. If the Learner talks about something else, kindly steer them back to it.
-- Use warm, simple, age-appropriate language for the Learner's grade.
-- Never ask for personal information (such as their full name, address, school, age, contact details or photos), and don't encourage them to share any.
-- Keep replies short: a few short paragraphs at most.
-- Write maths in LaTeX between \\( and \\) inline, or \\[ and \\] on its own line. Never use $ signs around maths.`;
 
 function systemPrompt(lesson: TutorLesson, grade: string, task: string): string {
   return `You are a friendly, patient Tutor teaching one Lesson to a child.\n\n${lessonContext(lesson, grade)}\n\n${GUARDRAILS}\n\nYour task now: ${task}`;

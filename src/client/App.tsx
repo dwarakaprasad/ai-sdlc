@@ -12,10 +12,12 @@ import type {
   LoggedInLearner,
   LearnerProfile,
   ParentStatus,
+  QuizAttempt,
   SessionMessage,
+  TeachingSettings,
   TutorSession,
 } from "../shared/api";
-import { MAX_RE_EXPLANATIONS_LIMIT } from "../shared/api";
+import { MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, TUTOR_STARTED_STEPS } from "../shared/api";
 import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
 import { MathText } from "./MathText";
@@ -250,13 +252,26 @@ function LlmSettingsForm() {
   );
 }
 
+/** The teaching settings' form fields, each with its label, hint and allowed range. */
+const TEACHING_FIELDS: { name: keyof TeachingSettings; label: string; hint: string; min: number; max: number }[] = [
+  { name: "maxReExplanations", label: text.teachingSettings.maxReExplanationsLabel, hint: text.teachingSettings.hint, min: 0, max: MAX_RE_EXPLANATIONS_LIMIT },
+  { name: "passMark", label: text.teachingSettings.passMarkLabel, hint: text.teachingSettings.passMarkHint, min: 1, max: 100 },
+  {
+    name: "maxQuizAttempts",
+    label: text.teachingSettings.maxQuizAttemptsLabel,
+    hint: text.teachingSettings.maxQuizAttemptsHint,
+    min: 1,
+    max: MAX_QUIZ_ATTEMPTS_LIMIT,
+  },
+];
+
 function TeachingSettingsForm() {
-  const [maxReExplanations, setMaxReExplanations] = useState<string>();
+  const [values, setValues] = useState<Record<keyof TeachingSettings, string>>();
   const [message, setMessage] = useState<{ text: string; error?: boolean }>();
   useEffect(
     () =>
       void api.teachingSettings().then(
-        (s) => setMaxReExplanations(String(s.maxReExplanations)),
+        (s) => setValues({ maxReExplanations: String(s.maxReExplanations), passMark: String(s.passMark), maxQuizAttempts: String(s.maxQuizAttempts) }),
         () => setMessage({ text: text.genericError, error: true }),
       ),
     [],
@@ -264,27 +279,36 @@ function TeachingSettingsForm() {
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const res = await api.saveTeachingSettings({ maxReExplanations: Number(maxReExplanations) });
-    setMessage(res.ok ? { text: text.teachingSettings.saved } : { text: res.status === 400 ? text.teachingSettings.invalid : text.genericError, error: true });
+    if (!values) return;
+    const res = await api.saveTeachingSettings({
+      maxReExplanations: Number(values.maxReExplanations),
+      passMark: Number(values.passMark),
+      maxQuizAttempts: Number(values.maxQuizAttempts),
+    });
+    if (res.ok) return setMessage({ text: text.teachingSettings.saved });
+    const { error } = await res.json().catch(() => ({}));
+    setMessage({ text: text.teachingSettings.errors[error] ?? text.genericError, error: true });
   }
 
-  if (maxReExplanations === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  if (values === undefined) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
   return (
     <section>
       <h2>{text.teachingSettings.heading}</h2>
       <form className="card" onSubmit={save}>
-        <label>
-          {text.teachingSettings.maxReExplanationsLabel}
-          <input
-            type="number"
-            min={0}
-            max={MAX_RE_EXPLANATIONS_LIMIT}
-            step={1}
-            value={maxReExplanations}
-            onChange={(e) => (setMaxReExplanations(e.target.value), setMessage(undefined))}
-          />
-        </label>
-        <span className="hint">{text.teachingSettings.hint}</span>
+        {TEACHING_FIELDS.map(({ name, label, hint, min, max }) => (
+          <label key={name}>
+            {label}
+            <input
+              type="number"
+              min={min}
+              max={max}
+              step={1}
+              value={values[name]}
+              onChange={(e) => (setValues({ ...values, [name]: e.target.value }), setMessage(undefined))}
+            />
+            <span className="hint">{hint}</span>
+          </label>
+        ))}
         {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
         <button type="submit">{text.teachingSettings.save}</button>
       </form>
@@ -494,8 +518,8 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
           {failed && (
             <p className="error">
               {text.session.failed}{" "}
-              {/* A failed answer is back in the answer box to send again; a failed Explanation needs this button. */}
-              {session.step === "explanation" && (
+              {/* A failed answer is back in the answer box to send again; a failed Explanation or re-teaching needs this button. */}
+              {TUTOR_STARTED_STEPS.includes(session.step) && (
                 <button type="button" onClick={() => void takeTurn(session)}>
                   {text.session.retry}
                 </button>
@@ -513,11 +537,178 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
               </button>
             </form>
           )}
-          {!busy && session.step === "ready-for-quiz" && <p className="hint">{text.session.readyForQuiz}</p>}
-          {session.step === "ended" && <p className="hint">{text.session.ended}</p>}
+          {!busy && session.step === "ready-for-quiz" && <QuizStart session={session} onStarted={setSession} onChanged={() => void open()} />}
+          {session.quiz && session.step !== "ready-for-quiz" && !failed && !busy && (
+            <QuizPanel
+              session={session}
+              quiz={session.quiz}
+              onAnswered={setSession}
+              onChanged={() => void open()}
+              onContinue={() => void takeTurn(session)}
+            />
+          )}
+          {session.step === "ended" && !session.quiz && <p className="hint">{text.session.ended}</p>}
         </>
       )}
     </section>
+  );
+}
+
+/** Starts the next Quiz attempt; the Tutor writes the questions first. */
+function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; onStarted: (s: TutorSession) => void; onChanged: () => void }) {
+  const [writing, setWriting] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function start() {
+    setWriting(true);
+    setFailed(false);
+    const result = await api.startQuiz(session.id).catch(() => ({ error: "llmFailed" }));
+    setWriting(false);
+    if ("id" in result) return onStarted(result);
+    // Another tab started the attempt first: show it.
+    if (result.error === "sessionChanged" || result.error === "noQuizNow") return onChanged();
+    setFailed(true);
+  }
+
+  if (writing) return <p className="hint" aria-live="polite">{text.quiz.writing}</p>;
+  return (
+    <div className="quiz">
+      {failed && <p className="error">{text.quiz.failed}</p>}
+      <button type="button" onClick={() => void start()}>
+        {failed ? text.session.retry : session.quiz ? text.quiz.startAgain : text.quiz.start}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * A Quiz attempt, one question at a time: right or wrong with a one-line explanation after each answer,
+ * then the score and what comes next. Resuming starts at the first unanswered question.
+ */
+function QuizPanel({
+  session,
+  quiz,
+  onAnswered,
+  onChanged,
+  onContinue,
+}: {
+  session: TutorSession;
+  quiz: QuizAttempt;
+  onAnswered: (s: TutorSession) => void;
+  onChanged: () => void;
+  onContinue: () => void;
+}) {
+  const [draft, setDraft] = useState("");
+  /** The question just answered, whose feedback shows until the Learner moves on. */
+  const [reviewing, setReviewing] = useState<number>();
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const index = reviewing !== undefined ? quiz.questions.findIndex((q) => q.id === reviewing) : quiz.questions.findIndex((q) => !q.answered);
+  const question = quiz.questions[index];
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!question || draft.trim() === "") return;
+    setChecking(true);
+    setError(undefined);
+    const result = await api.answer(session.id, question.id, draft.trim()).catch(() => ({ error: "llmFailed" }));
+    setChecking(false);
+    if ("error" in result) {
+      if (result.error === "sessionChanged") return onChanged();
+      return setError(text.quiz.errors[result.error] ?? text.quiz.failed);
+    }
+    const answered = { ...question, answered: { answer: draft.trim(), ...result.feedback } };
+    onAnswered({
+      ...session,
+      step: result.step,
+      quiz: { ...quiz, score: result.score, questions: quiz.questions.map((q) => (q.id === question.id ? answered : q)) },
+    });
+    setReviewing(question.id);
+    setDraft("");
+  }
+
+  const heading = (
+    <h2>
+      {text.quiz.heading}
+      {quiz.number > 1 && <span className="hint"> · {text.quiz.attempt(quiz.number, quiz.maxAttempts)}</span>}
+    </h2>
+  );
+
+  if (!question && quiz.score) {
+    return (
+      <div className="quiz card" aria-live="polite">
+        {heading}
+        <p className="score">{text.quiz.score(quiz.score.correct, quiz.score.total)}</p>
+        {session.step === "goal-met" && <p>{text.quiz.met}</p>}
+        {session.step === "ended" && <p className="hint">{text.quiz.ended}</p>}
+        {session.step === "re-teaching" && (
+          <>
+            <p>{text.quiz.reTeach}</p>
+            <button type="button" onClick={onContinue}>
+              {text.quiz.continue}
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
+  if (!question) return null;
+
+  const feedback = question.answered;
+  return (
+    <div className="quiz card">
+      {heading}
+      <p className="hint">{text.quiz.question(index + 1, quiz.questions.length)}</p>
+      <div className="prompt">
+        <MathText text={question.prompt} />
+      </div>
+      {feedback ? (
+        <div className={feedback.correct ? "feedback right" : "feedback wrong"} aria-live="polite">
+          <p>
+            <strong>{feedback.correct ? text.quiz.right : text.quiz.wrong}</strong> <MathText text={feedback.explanation} />
+          </p>
+          {!feedback.correct && (
+            <p className="hint">
+              <MathText text={text.quiz.correctAnswer(feedback.correctAnswer)} />
+            </p>
+          )}
+          <button type="button" onClick={() => setReviewing(undefined)}>
+            {quiz.score ? text.quiz.seeScore : text.quiz.next}
+          </button>
+        </div>
+      ) : (
+        <form className="answer" onSubmit={submit}>
+          {question.type === "multiple-choice" && (
+            <fieldset className="choices">
+              {question.choices.map((choice) => (
+                <label key={choice} className="choice">
+                  <input type="radio" name={`q${question.id}`} value={choice} checked={draft === choice} onChange={() => setDraft(choice)} />
+                  <MathText text={choice} />
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {question.type === "number" && (
+            <label>
+              {text.quiz.numberLabel}
+              <input type="text" inputMode="decimal" autoComplete="off" value={draft} onChange={(e) => setDraft(e.target.value)} />
+              <span className="hint">{text.quiz.numberHint}</span>
+            </label>
+          )}
+          {question.type === "short-answer" && (
+            <label>
+              {text.quiz.writtenLabel}
+              <textarea rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} />
+            </label>
+          )}
+          {error && <p className="error">{error}</p>}
+          <button type="submit" disabled={checking || draft.trim() === ""}>
+            {checking ? text.quiz.checking : text.quiz.submit}
+          </button>
+        </form>
+      )}
+    </div>
   );
 }
 
