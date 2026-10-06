@@ -4,7 +4,7 @@ import type { AvatarChoice, AvatarId } from "../../shared/api";
 /*
  * The Avatar drawings: flat geometry on a 64×64 grid in the same style as Jarvis, white on the Learner's accent colour.
  * Parts take their colour from classes (components.css): w white, k ink, d a dim shadow, y the Tutor's yellow, o orange,
- * and a the accent colour itself (currentColor), so the drawings use only the tokens.
+ * and a the accent colour itself (currentColor), so the drawings take every colour from the tokens.
  */
 const DRAWINGS: Record<AvatarId, ReactNode> = {
   fox: (

@@ -47,7 +47,7 @@ export type Learner = { id: number; name: string; grade: string; curriculumId: s
  * Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it;
  * an absent `avatar` or `color` keeps it (a new Learner gets no Avatar and the next colour), and a `null` Avatar clears it.
  */
-export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null; avatar?: AvatarId | null; color?: AccentColor };
+export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null } & Partial<AvatarChoice>;
 
 /** One profile on the Learner login screen (GET /api/learner/profiles). */
 export type LearnerProfile = { id: number; name: string; hasPin: boolean } & AvatarChoice;

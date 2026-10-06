@@ -97,6 +97,7 @@ export const text = {
     pictureHeading: "Picture",
     colorHeading: "Colour",
     done: "Done",
+    notMe: (name: string) => `Not ${name}? Switch profile`,
   },
   learnerHome: {
     heading: (name: string) => `Hi ${name}!`,

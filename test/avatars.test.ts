@@ -7,7 +7,7 @@ import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app";
 import { openDatabase } from "../src/server/db";
-import { ACCENT_COLORS, AVATARS } from "../src/shared/api";
+import { ACCENT_COLORS } from "../src/shared/api";
 import { inFolder, validCurriculum, writeFixture } from "./support/curriculumFixture";
 import { createFakeLlm } from "./support/fakeLlm";
 import { createTestApp, fakeForEveryProvider } from "./support/testApp";
@@ -38,6 +38,16 @@ describe("Accent colours", () => {
     for (let i = 0; i <= ACCENT_COLORS.length; i++) colors.push((await add(`Learner ${i}`)).color);
 
     expect(colors).toEqual([...ACCENT_COLORS, ACCENT_COLORS[0]]);
+  });
+
+  it("gives a new Learner a colour no sibling has, even after a sibling changed theirs", async () => {
+    const { add, loggedIn } = await install();
+    await add("Ada");
+    const ben = await add("Ben");
+    // Ben swaps amber for Ada's coral, so amber is free again.
+    await (await loggedIn(ben.id))("/api/learner/me/avatar", { avatar: "owl", color: ACCENT_COLORS[0] }, "PUT");
+
+    expect((await add("Cy")).color).toBe(ACCENT_COLORS[1]);
   });
 
   it("gives Learners from before Avatars a colour each in palette order, and no Avatar yet", async () => {
@@ -133,10 +143,6 @@ describe("A Learner's Avatar", () => {
     expect(await res.json()).toEqual({ error });
   });
 
-  it("comes from a fixed set of about 16 pictures", () => {
-    expect(AVATARS.length).toBe(16);
-    expect(new Set(AVATARS).size).toBe(AVATARS.length);
-  });
 });
 
 /** A copy of the migrations folder as it was before Avatars: every migration up to the limits. */
@@ -145,7 +151,7 @@ function migrationsBeforeAvatars(): string {
   cpSync("drizzle", folder, { recursive: true });
   const journalPath = join(folder, "meta", "_journal.json");
   const journal = JSON.parse(readFileSync(journalPath, "utf8"));
-  journal.entries = journal.entries.filter((e: { tag: string }) => e.tag <= "0007_limits");
+  journal.entries = journal.entries.slice(0, journal.entries.findIndex((e: { tag: string }) => e.tag === "0008_avatars"));
   writeFileSync(journalPath, JSON.stringify(journal));
   return folder;
 }

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ffc716ca-9a90-4503-a5ee-84afe170d359",
+  "id": "b99f2491-802f-4888-b9ba-c23ea8848d95",
   "prevId": "453edfd4-db4b-49cb-8f05-8b4a57086d2b",
   "tables": {
     "goals": {
@@ -134,7 +134,8 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'coral'"
         }
       },
       "indexes": {},

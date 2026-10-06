@@ -33,7 +33,7 @@ export function App() {
   if (error) content = <p className="error">{error}</p>;
   else if (!state) content = <p>{text.loading}</p>;
   // A Learner picks their Avatar at their first login, before their first Today.
-  else if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} />;
+  else if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} onSwitchProfile={refresh} />;
   else if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
   else if (!state.parent.passwordSet) content = <SetupForm onDone={refresh} />;
   else if (state.parent.loggedIn) content = <ParentArea onLogout={refresh} />;

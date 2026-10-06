@@ -11,7 +11,15 @@ import { text } from "../text";
  * A Learner's first pick of Avatar and accent colour, before their first Today: a live profile card on one side, the
  * pictures and colours on the other. Done saves both; the Parent can change them later.
  */
-export function AvatarPick({ learner, onDone }: { learner: LoggedInLearner; onDone: (learner: LoggedInLearner) => void }) {
+export function AvatarPick({
+  learner,
+  onDone,
+  onSwitchProfile,
+}: {
+  learner: LoggedInLearner;
+  onDone: (learner: LoggedInLearner) => void;
+  onSwitchProfile: () => void;
+}) {
   const [avatar, setAvatar] = useState<AvatarId>();
   const [color, setColor] = useState<AccentColor>(learner.color);
   const [saving, setSaving] = useState(false);
@@ -68,6 +76,10 @@ export function AvatarPick({ learner, onDone }: { learner: LoggedInLearner; onDo
         </fieldset>
         {error && <p className="text-warm">{error}</p>}
         <div className="avatar-pick-done">
+          {/* A sibling who tapped the wrong profile can leave without picking for them. */}
+          <Button kind="quiet" onClick={() => void api.logoutLearner().then(onSwitchProfile)}>
+            {text.avatarPick.notMe(learner.name)}
+          </Button>
           <Button type="submit" disabled={!avatar || saving}>
             {text.avatarPick.done} <ArrowIcon size={18} />
           </Button>

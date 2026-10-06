@@ -329,7 +329,7 @@
 }
 .avatar-initial {
   fill: var(--on-ink);
-  font-size: 30px;
+  font-size: var(--t-h1);
   font-weight: 800;
   font-family: var(--font);
 }

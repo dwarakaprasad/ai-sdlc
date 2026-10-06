@@ -1,8 +1,18 @@
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { loadCurricula } from "../curriculum";
 import { PIN_PATTERN } from "../shared/auth";
-import { ACCENT_COLORS, isAccentColor, isAvatarId, type AccentColor, type AvatarChoice, type Learner, type LearnerInput } from "../shared/api";
+import {
+  ACCENT_COLORS,
+  isAccentColor,
+  isAvatarId,
+  type AccentColor,
+  type AvatarChoice,
+  type Learner,
+  type LearnerInput,
+  type LearnerProfile,
+  type LoggedInLearner,
+} from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, hashPassword } from "./auth";
 import { parseId, readJsonObject } from "./http";
@@ -37,14 +47,33 @@ export function hasPin(learner: LearnerRow): boolean {
 }
 
 /** A Learner's Avatar and its colour, as every view of a Learner shows them. */
-export function avatarOf({ avatar, color }: LearnerRow): AvatarChoice {
+function avatarOf({ avatar, color }: LearnerRow): AvatarChoice {
   return { avatar, color };
 }
 
-/** The colour a new Learner gets: the one after the most recently added Learner's in palette order, so siblings differ. */
+/** A Learner's profile on the login screen: no private details. */
+export function toLearnerProfile(row: LearnerRow): LearnerProfile {
+  return { id: row.id, name: row.name, hasPin: hasPin(row), ...avatarOf(row) };
+}
+
+/** The logged-in Learner, as they see themselves. */
+export function toLoggedInLearner(row: LearnerRow): LoggedInLearner {
+  return { id: row.id, name: row.name, ...avatarOf(row) };
+}
+
+/** Saves a Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
+export function saveAvatar(db: Db, learner: LearnerRow, choice: { avatar: NonNullable<AvatarChoice["avatar"]>; color: AccentColor }): LearnerRow {
+  return db.update(learners).set(choice).where(eq(learners.id, learner.id)).returning().get()!;
+}
+
+/**
+ * The colour a new Learner gets, so siblings differ by default: the one fewest Learners have, earliest in palette order
+ * on a tie. Learners added one after another get the colours in palette order.
+ */
 function nextColor(db: Db): AccentColor {
-  const last = db.select({ color: learners.color }).from(learners).orderBy(desc(learners.id)).get();
-  return last ? ACCENT_COLORS[(ACCENT_COLORS.indexOf(last.color) + 1) % ACCENT_COLORS.length]! : ACCENT_COLORS[0];
+  const used = allLearners(db).map((l) => l.color);
+  const count = (color: AccentColor) => used.filter((c) => c === color).length;
+  return ACCENT_COLORS.reduce((least, color) => (count(color) < count(least) ? color : least));
 }
 
 /** The Parent's Learner management, mounted under the Parent's protected routes. */
