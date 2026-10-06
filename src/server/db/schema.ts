@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { GOAL_KINDS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, SESSION_STEPS } from "../../shared/api";
+import { GOAL_KINDS, DEFAULT_TEACHING_SETTINGS, GOAL_STATUSES, MESSAGE_ROLES, QUESTION_TYPES, SESSION_STEPS } from "../../shared/api";
 
 /** Who a login belongs to. */
 export const roles = ["parent", "learner"] as const;
@@ -39,6 +39,10 @@ export const settings = sqliteTable("settings", {
   llmModel: text("llm_model").notNull(),
   /** How many times the Tutor may re-explain before the Goal becomes a Flagged Goal. */
   maxReExplanations: integer("max_re_explanations").notNull().default(DEFAULT_TEACHING_SETTINGS.maxReExplanations),
+  /** The percentage of a Quiz attempt's answers that must be right for the Goal to be met. */
+  passMark: integer("pass_mark").notNull().default(DEFAULT_TEACHING_SETTINGS.passMark),
+  /** How many Quiz attempts a Session may have before the Goal becomes a Flagged Goal. */
+  maxQuizAttempts: integer("max_quiz_attempts").notNull().default(DEFAULT_TEACHING_SETTINGS.maxQuizAttempts),
 });
 
 /** Tokens used by one LLM call, dated by the server's local day so daily totals match the household's day. */
@@ -95,4 +99,43 @@ export const messages = sqliteTable("messages", {
   role: text("role", { enum: MESSAGE_ROLES }).notNull(),
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+/** A Lesson Quiz attempt within a Session; at most one per Session is unfinished at a time. */
+export const quizAttempts = sqliteTable("quiz_attempts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  /** 1 for the Session's first attempt. */
+  number: integer("number").notNull(),
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  /** How many answers were right, and whether that reached the pass mark of the time; set with `finishedAt` once every question is answered. */
+  correct: integer("correct"),
+  passed: integer("passed", { mode: "boolean" }),
+  finishedAt: integer("finished_at", { mode: "timestamp" }),
+});
+
+/** One question of a Quiz attempt, with the Learner's answer and its grading once answered. */
+export const quizQuestions = sqliteTable("quiz_questions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  attemptId: integer("attempt_id")
+    .notNull()
+    .references(() => quizAttempts.id, { onDelete: "cascade" }),
+  /** Order within the attempt, from 1. */
+  position: integer("position").notNull(),
+  type: text("type", { enum: QUESTION_TYPES }).notNull(),
+  prompt: text("prompt").notNull(),
+  /** The options of a multiple-choice question, as a JSON array; empty for the other types. */
+  choices: text("choices", { mode: "json" }).$type<string[]>().notNull(),
+  answerKey: text("answer_key").notNull(),
+  /** One line on why the answer key is right, shown after a multiple-choice or number answer. */
+  explanation: text("explanation").notNull(),
+  /** The Learning Objective the question covers, as written in the Curriculum. */
+  objective: text("objective").notNull(),
+  answer: text("answer"),
+  correct: integer("correct", { mode: "boolean" }),
+  /** The one-line explanation the Learner saw: the question's own, or the grader's for a short answer. */
+  feedback: text("feedback"),
+  answeredAt: integer("answered_at", { mode: "timestamp" }),
 });

@@ -1,4 +1,5 @@
 import type {
+  AnswerResult,
   ConnectionTest,
   CurriculumSummary,
   DailyUsage,
@@ -68,6 +69,16 @@ export const api = {
     const res = await post(`/api/learner/goals/${goalId}/session`, {});
     if (!res.ok) throw new Error(`open session: ${res.status}`);
     return (await res.json()) as TutorSession;
+  },
+  /** Starts the next Lesson Quiz attempt; the Tutor writes its questions first, which can take a little while. */
+  startQuiz: async (sessionId: number): Promise<TutorSession | { error: string }> => {
+    const res = await post(`/api/learner/sessions/${sessionId}/quiz`, {});
+    return res.json();
+  },
+  /** Answers the attempt's next question; a written answer is graded by the Tutor, which can take a moment. */
+  answer: async (sessionId: number, questionId: number, answer: string): Promise<AnswerResult | { error: string }> => {
+    const res = await post(`/api/learner/sessions/${sessionId}/answer`, { questionId, answer });
+    return res.json();
   },
   /**
    * One Session turn: sends the Learner's message (none for the Explanation) and calls `onText` with each piece of

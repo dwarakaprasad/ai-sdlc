@@ -83,6 +83,14 @@ _Avoid_: Review, comprehension test
 A scored set of 10–20 freshly generated questions on one Lesson's Learning Objectives; the Goal is met when an attempt reaches the pass mark.
 _Avoid_: Unit test (for a single Lesson), exam
 
+**Quiz Attempt**:
+One sitting of a Lesson Quiz with its own freshly generated questions; a failed attempt is followed by re-teaching of only the Learning Objectives it missed, then a new attempt, up to the Parent's attempt cap.
+_Avoid_: Try, round
+
+**Pass Mark**:
+The percentage of a Quiz Attempt's answers that must be right for the Goal to be met; 100% unless the Parent changes it.
+_Avoid_: Threshold, passing grade
+
 **Unit Test**:
 A scored set of questions covering every Learning Objective in a Unit, taken once all its Lessons are met.
 _Avoid_: Final, exam

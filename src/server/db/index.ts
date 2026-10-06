@@ -8,6 +8,9 @@ const migrationsFolder = fileURLToPath(new URL("../../../drizzle", import.meta.u
 
 export type Db = ReturnType<typeof openDatabase>;
 
+/** What reads need, which a transaction also offers, so a helper that only reads can run inside one. */
+export type DbReader = Pick<Db, "select">;
+
 /** Opens (or creates) the SQLite database at `path` and applies migrations. Use ":memory:" in tests. */
 export function openDatabase(path: string) {
   const sqlite = new Database(path);

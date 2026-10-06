@@ -1,11 +1,24 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import type { SessionMessage, TurnEvents, TutorSession } from "../shared/api";
-import { START_STATE, checkTurn, tutorTurn, type TurnOutcome, type TutorLesson } from "../tutor";
+import { LlmError } from "../llm/provider";
+import type { AnswerResult, QuizAttempt, SessionMessage, TurnEvents, TutorSession } from "../shared/api";
+import {
+  START_STATE,
+  afterAttempt,
+  checkAnswer,
+  checkTurn,
+  generateQuiz,
+  gradeAnswer,
+  missedObjectives,
+  tutorTurn,
+  type Grade,
+  type TurnOutcome,
+  type TutorLesson,
+} from "../tutor";
 import type { AppDeps } from "./deps";
-import type { Db } from "./db";
-import { goals, messages, sessions } from "./db/schema";
+import type { Db, DbReader } from "./db";
+import { goals, messages, quizAttempts, quizQuestions, sessions } from "./db/schema";
 import { lessonOfGoal, type GoalRow } from "./goals";
 import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
@@ -13,6 +26,8 @@ import { appLlm } from "./llm";
 import { teachingSettings } from "./settings";
 
 type SessionRow = typeof sessions.$inferSelect;
+type AttemptRow = typeof quizAttempts.$inferSelect;
+type QuestionRow = typeof quizQuestions.$inferSelect;
 
 /** The logged-in Learner's Sessions, mounted under the Learner's protected routes. */
 export function learnerSessionRoutes(deps: AppDeps) {
@@ -78,6 +93,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
           transcript: transcriptOf(db, session.id),
           learnerMessage,
           maxReExplanations: teachingSettings(db).maxReExplanations,
+          missedObjectives: missedObjectives(lesson, questionsOf(db, latestAttempt(db, session.id)?.id)),
         },
         appLlm(deps),
       );
@@ -119,7 +135,163 @@ export function learnerSessionRoutes(deps: AppDeps) {
         if (saved) await send("done", { step: outcome.state.step });
         else await send("error", { error: "sessionChanged" });
       });
+    })
+    .post("/sessions/:id/quiz", async (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const found = sessionOf(db, learner, parseId(c.req.param("id")));
+      if (!found) return c.json({ error: "sessionNotFound" }, 404);
+      const { session, goal } = found;
+      if (session.step !== "ready-for-quiz") return c.json({ error: "noQuizNow" }, 409);
+      const lesson = tutorLesson(learner, goal);
+      if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
+
+      // Every attempt gets new questions: none may repeat one the Session has already asked.
+      const earlier = db
+        .select({ prompt: quizQuestions.prompt })
+        .from(quizQuestions)
+        .innerJoin(quizAttempts, eq(quizQuestions.attemptId, quizAttempts.id))
+        .where(eq(quizAttempts.sessionId, session.id))
+        .all()
+        .map((q) => q.prompt);
+      const questions = await llmCall(() => generateQuiz(appLlm(deps), lesson, learner.grade, earlier));
+      if (!questions) return c.json({ error: "llmFailed" }, 502);
+
+      const at = now();
+      const started = db.transaction((tx) => {
+        // Only while the Session still waits for an attempt: a second tap may have started one first.
+        const { changes } = tx
+          .update(sessions)
+          .set({ step: "quiz" })
+          .where(and(eq(sessions.id, session.id), eq(sessions.step, "ready-for-quiz")))
+          .run();
+        if (changes === 0) return false;
+        const attempt = tx
+          .insert(quizAttempts)
+          .values({ sessionId: session.id, number: (latestAttempt(tx, session.id)?.number ?? 0) + 1, startedAt: at })
+          .returning()
+          .get();
+        tx.insert(quizQuestions)
+          .values(questions.map((q, i) => ({ attemptId: attempt.id, position: i + 1, ...q })))
+          .run();
+        return true;
+      });
+      if (!started) return c.json({ error: "sessionChanged" }, 409);
+      return c.json(toTutorSession(db, { ...session, step: "quiz" }, lesson), 201);
+    })
+    .post("/sessions/:id/answer", async (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const found = sessionOf(db, learner, parseId(c.req.param("id")));
+      if (!found) return c.json({ error: "sessionNotFound" }, 404);
+      const { session, goal } = found;
+      if (session.step !== "quiz") return c.json({ error: "noQuizNow" }, 409);
+      const attempt = latestAttempt(db, session.id);
+      const question = questionsOf(db, attempt?.id).find((q) => q.answer === null);
+      if (!attempt || !question) return c.json({ error: "noQuizNow" }, 409);
+      const { questionId, answer } = (await readJsonObject(c)) ?? {};
+      // The Learner answers the next unanswered question; any other was answered already, perhaps in another tab.
+      if (questionId !== question.id) return c.json({ error: "sessionChanged" }, 409);
+      if (typeof answer !== "string" || answer.trim() === "") return c.json({ error: "answerRequired" }, 400);
+      const given = answer.trim();
+      if (checkAnswer(question, given) === "invalidAnswer") return c.json({ error: "invalidAnswer" }, 400);
+      const lesson = tutorLesson(learner, goal);
+      if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
+
+      const grade = await llmCall(() => gradeAnswer(appLlm(deps), lesson, learner.grade, question, given));
+      if (!grade) return c.json({ error: "llmFailed" }, 502);
+
+      const result = saveAnswer(db, { session, goal, attempt, question, answer: given, grade, at: now() });
+      if (!result) return c.json({ error: "sessionChanged" }, 409);
+      return c.json(result);
     });
+}
+
+/** Saves a graded answer and, when it was the attempt's last, the score and where it leads; undefined if it was answered already. */
+function saveAnswer(
+  db: Db,
+  { session, goal, attempt, question, answer, grade, at }: { session: SessionRow; goal: GoalRow; attempt: AttemptRow; question: QuestionRow; answer: string; grade: Grade; at: Date },
+): AnswerResult | undefined {
+  const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey };
+  return db.transaction((tx) => {
+    const { changes } = tx
+      .update(quizQuestions)
+      .set({ answer, correct: grade.correct, feedback: grade.explanation, answeredAt: at })
+      .where(and(eq(quizQuestions.id, question.id), isNull(quizQuestions.answer)))
+      .run();
+    if (changes === 0) return undefined;
+    const questions = questionsOf(tx, attempt.id);
+    if (questions.some((q) => q.answer === null)) return { feedback, step: "quiz" as const };
+
+    const correct = questions.filter((q) => q.correct).length;
+    const total = questions.length;
+    const outcome = afterAttempt({ correct, total, attempt: attempt.number }, teachingSettings(tx));
+    tx.update(quizAttempts).set({ correct, passed: outcome.passed, finishedAt: at }).where(eq(quizAttempts.id, attempt.id)).run();
+    tx.update(sessions)
+      .set({ step: outcome.step, endedAt: outcome.step === "remediation" ? null : at })
+      .where(eq(sessions.id, session.id))
+      .run();
+    if (outcome.step !== "remediation") {
+      tx.update(goals)
+        .set({ status: outcome.passed ? "met" : "flagged" })
+        .where(eq(goals.id, goal.id))
+        .run();
+    }
+    return { feedback, step: outcome.step, score: { correct, total, passed: outcome.passed } };
+  });
+}
+
+/** The Session as the Learner sees it, with its latest Quiz attempt. */
+function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): TutorSession {
+  const attempt = latestAttempt(db, session.id);
+  return {
+    id: session.id,
+    subjectName: lesson.subjectName,
+    title: lesson.title,
+    step: session.step,
+    messages: transcriptOf(db, session.id),
+    ...(attempt && { quiz: toQuizAttempt(attempt, questionsOf(db, attempt.id), teachingSettings(db).maxQuizAttempts) }),
+  };
+}
+
+/** Runs an LLM call, turning its failure into undefined; nothing is kept from a failed call, so the Learner can simply try again. */
+async function llmCall<T>(call: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await call();
+  } catch (error) {
+    if (!(error instanceof LlmError)) throw error;
+    console.error("Tutor call failed:", error.message);
+    return undefined;
+  }
+}
+
+/** The Session's latest Quiz attempt, if it has had one. */
+function latestAttempt(db: DbReader, sessionId: number): AttemptRow | undefined {
+  return db.select().from(quizAttempts).where(eq(quizAttempts.sessionId, sessionId)).orderBy(desc(quizAttempts.number)).get();
+}
+
+/** An attempt's questions in order; none without an attempt. */
+function questionsOf(db: DbReader, attemptId: number | undefined): QuestionRow[] {
+  if (attemptId === undefined) return [];
+  return db.select().from(quizQuestions).where(eq(quizQuestions.attemptId, attemptId)).orderBy(asc(quizQuestions.position)).all();
+}
+
+/** An attempt as the Learner sees it: answer keys only alongside answers already given. */
+function toQuizAttempt(attempt: AttemptRow, questions: QuestionRow[], maxAttempts: number): QuizAttempt {
+  return {
+    number: attempt.number,
+    maxAttempts,
+    questions: questions.map((q) => ({
+      id: q.id,
+      type: q.type,
+      prompt: q.prompt,
+      choices: q.choices,
+      ...(q.answer !== null && {
+        answered: { answer: q.answer, correct: q.correct === true, explanation: q.feedback ?? q.explanation, correctAnswer: q.answerKey },
+      }),
+    })),
+    ...(attempt.correct !== null && { score: { correct: attempt.correct, total: questions.length, passed: attempt.passed === true } }),
+  };
 }
 
 /** The logged-in Learner's own Goal with id `id`, if there is one. */
@@ -150,15 +322,5 @@ function transcriptOf(db: Db, sessionId: number): SessionMessage[] {
     .where(eq(messages.sessionId, sessionId))
     .orderBy(asc(messages.id))
     .all();
-}
-
-function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): TutorSession {
-  return {
-    id: session.id,
-    subjectName: lesson.subjectName,
-    title: lesson.title,
-    step: session.step,
-    messages: transcriptOf(db, session.id),
-  };
 }
 

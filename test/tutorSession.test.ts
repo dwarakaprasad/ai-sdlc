@@ -1,46 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GUARDRAILS } from "../src/tutor";
-import { inFolder, validCurriculum, writeFixture } from "./support/curriculumFixture";
-import { readSse } from "./support/sse";
-import { createTestApp } from "./support/testApp";
-
-const ratios = "math/term-1/unit-1/lesson-1";
-
-/** validCurriculum with Tutoring Instructions for Math. */
-const curriculum = {
-  ...validCurriculum,
-  "math/tutoring.md": "Use tape diagrams to show ratios.",
-};
-
-/**
- * An install with a logged-in Parent and one logged-in Learner, Ada (grade 6),
- * whose current Goal is "Understanding ratios".
- */
-async function household() {
-  const { client, llm } = createTestApp({ curriculaDir: writeFixture(inFolder("grade-6", curriculum)) });
-  const parent = client();
-  await parent("/api/parent/setup", { password: "correct horse" });
-  const ada = (await (await parent("/api/parent/learners", { name: "Ada", grade: "6", curriculumId: "grade-6" })).json()).id as number;
-  const goalId = (await (await parent(`/api/parent/learners/${ada}/goals`, { lessonKey: ratios, targetDate: "2026-12-01" })).json())
-    .id as number;
-  const learner = client();
-  await learner("/api/learner/login", { learnerId: ada });
-
-  /** Taps the Goal card: starts a Session, or resumes the open one. */
-  const openSession = async (goal = goalId) => learner(`/api/learner/goals/${goal}/session`, {});
-  /** One turn of the Session: the Learner's message (none for the Explanation) in, the streamed Tutor reply out. */
-  const turn = async (sessionId: number, message?: string) =>
-    readSse(await learner(`/api/learner/sessions/${sessionId}/turn`, message === undefined ? {} : { message }));
-  /** Opens the Session and hears the Explanation. */
-  const startLesson = async (explanation = "A ratio compares two quantities. What is the ratio of 2 cats to 3 dogs?") => {
-    const session = await (await openSession()).json();
-    llm.replyWith(explanation);
-    await turn(session.id);
-    return session.id as number;
-  };
-  const parentGoals = async () => (await parent(`/api/parent/learners/${ada}/goals`)).json();
-  return { client, parent, learner, llm, ada, goalId, openSession, turn, startLesson, parentGoals };
-}
+import { household } from "./support/household";
 
 describe("Starting a Tutor Session", () => {
   it("starts a Session on a Goal and streams the Explanation", async () => {
@@ -181,7 +141,7 @@ describe("The Understanding Check", () => {
   it("uses the Parent's re-explanation cap", async () => {
     const { parent, llm, turn, startLesson, parentGoals } = await household();
     const res = await parent("/api/parent/settings/teaching", { maxReExplanations: 1 }, "PUT");
-    expect(await res.json()).toEqual({ maxReExplanations: 1 });
+    expect(await res.json()).toMatchObject({ maxReExplanations: 1 });
     const sessionId = await startLesson();
 
     llm.decideWith({ verdict: "re-explain" });
@@ -285,13 +245,13 @@ describe("The re-explanation cap setting", () => {
   it("defaults to 3, and refuses anything but a whole number from 0 to 10", async () => {
     const { parent } = await household();
 
-    expect(await (await parent("/api/parent/settings/teaching")).json()).toEqual({ maxReExplanations: 3 });
+    expect(await (await parent("/api/parent/settings/teaching")).json()).toMatchObject({ maxReExplanations: 3 });
     for (const maxReExplanations of [-1, 11, 1.5, "2", null]) {
       const res = await parent("/api/parent/settings/teaching", { maxReExplanations }, "PUT");
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({ error: "invalidMaxReExplanations" });
     }
-    expect(await (await parent("/api/parent/settings/teaching")).json()).toEqual({ maxReExplanations: 3 });
+    expect(await (await parent("/api/parent/settings/teaching")).json()).toMatchObject({ maxReExplanations: 3 });
   });
 
   it("keeps the Parent's LLM choice when the cap changes", async () => {
@@ -301,7 +261,7 @@ describe("The re-explanation cap setting", () => {
     await parent("/api/parent/settings/teaching", { maxReExplanations: 0 }, "PUT");
 
     expect(await (await parent("/api/parent/settings/llm")).json()).toEqual({ provider: "openai", model: "gpt-5.4-mini" });
-    expect(await (await parent("/api/parent/settings/teaching")).json()).toEqual({ maxReExplanations: 0 });
+    expect(await (await parent("/api/parent/settings/teaching")).json()).toMatchObject({ maxReExplanations: 0 });
   });
 });
 
