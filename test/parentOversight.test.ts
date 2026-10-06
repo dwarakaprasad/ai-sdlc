@@ -47,10 +47,10 @@ async function oversight() {
     }
     return last;
   };
-  /** Turns Ada's current Goal into a Flagged Goal: with no re-explanations allowed, one misunderstanding hands it back. */
-  const flagGoal = async () => {
+  /** Turns one of Ada's Goals (her first, unless given) into a Flagged Goal: with no re-explanations allowed, one misunderstanding hands it back. */
+  const flagGoal = async (goalId = home.goalId) => {
     await parent("/api/parent/settings/teaching", { maxReExplanations: 0 }, "PUT");
-    const session = await (await home.openSession()).json();
+    const session = await (await home.openSession(goalId)).json();
     llm.replyWith("A ratio compares two quantities. What is the ratio of 2 cats to 3 dogs?");
     await turn(session.id);
     llm.decideWith({ verdict: "re-explain" });
@@ -227,6 +227,22 @@ describe("Resolving a Flagged Goal", () => {
     expect(await cards()).toEqual([expect.objectContaining({ title: "Equivalent ratios" })]);
   });
 
+  it("mark met on a Unit's last Lesson makes the Unit Test the next Goal", async () => {
+    const { flagGoal, goalAction, goalId, parentGoals } = await oversight();
+    await flagGoal();
+    await goalAction(goalId, "met");
+    const next = (await parentGoals()).at(-1) as Goal;
+    await flagGoal(next.id);
+
+    await goalAction(next.id, "met");
+
+    expect((await parentGoals()).map(({ kind, lessonKey, status }: Goal) => ({ kind, lessonKey, status }))).toEqual([
+      { kind: "lesson", lessonKey: ratios, status: "met" },
+      { kind: "lesson", lessonKey: equivalentRatios, status: "met" },
+      { kind: "unit-test", lessonKey: "math/term-1/unit-1", status: "active" },
+    ]);
+  });
+
   it("refuses retry and mark met for a Goal that isn't flagged", async () => {
     const { goalAction, goalId, ada, parent } = await oversight();
 
@@ -277,6 +293,22 @@ describe("Orphaned Goals", () => {
 
     expect(await home.parentGoals()).toEqual([expect.objectContaining({ id: home.goalId, orphaned: true })]);
     expect(await home.cards()).toEqual([]);
+  });
+
+  it("are only Goals still to be met: a met Goal whose Lesson is renumbered keeps its history and can't be re-pointed", async () => {
+    const { flagGoal, goalAction, goalId, parent, ada, parentGoals, curriculumFolder } = await oversight();
+    await flagGoal();
+    await goalAction(goalId, "met");
+    // The Ratios Unit removed: both the met Goal's Lesson and the new Goal's are gone.
+    writeFileSync(join(curriculumFolder, "math/term-1.md"), validCurriculum["math/term-1.md"].replace(/## Unit 1: Ratios[^]*?(?=## Unit 2)/, ""));
+
+    const goals: Goal[] = await parentGoals();
+    expect(goals.map(({ status, orphaned }) => ({ status, orphaned }))).toEqual([
+      { status: "met", orphaned: false },
+      { status: "active", orphaned: true },
+    ]);
+    expect(await (await goalAction(goalId, "repoint", { lessonKey: dividingFractions })).json()).toEqual({ error: "goalNotOrphaned" });
+    expect((await parent(`/api/parent/learners/${ada}/goals/${goalId}`, undefined, "DELETE")).status).toBe(409);
   });
 
   it("aren't shown while the Curriculum is invalid, as every Goal would look orphaned", async () => {

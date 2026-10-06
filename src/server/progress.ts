@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
-import type { GoalProgress, SessionSummary, SessionTranscript } from "../shared/api";
+import type { GoalProgress, QuizScore, SessionSummary, SessionTranscript } from "../shared/api";
 import type { AppDeps } from "./deps";
 import type { DbReader } from "./db";
 import { goals, messages, quizAttempts, quizQuestions, sessions } from "./db/schema";
@@ -9,6 +9,7 @@ import { parseId } from "./http";
 import { learnerFromPath } from "./learners";
 
 type SessionRow = typeof sessions.$inferSelect;
+type AttemptRow = typeof quizAttempts.$inferSelect;
 
 /** The Parent's oversight of one Learner (progress and transcripts), mounted under the Parent's protected routes at /learners/:id. */
 export function parentProgressRoutes(deps: AppDeps) {
@@ -95,7 +96,12 @@ function finishedAttempts(db: DbReader, sessionIds: number[]) {
     db,
     attempts.map((a) => a.id),
   );
-  return attempts.map((a) => ({ sessionId: a.sessionId, number: a.number, correct: a.correct ?? 0, total: totals.get(a.id) ?? 0, passed: a.passed === true }));
+  return attempts.map((a) => ({ sessionId: a.sessionId, number: a.number, ...scoreOf(a, totals.get(a.id) ?? 0)! }));
+}
+
+/** A finished attempt's score out of its `total` questions; undefined while it is unfinished. */
+function scoreOf(attempt: AttemptRow, total: number): QuizScore | undefined {
+  return attempt.correct === null ? undefined : { correct: attempt.correct, total, passed: attempt.passed === true };
 }
 
 /** How many questions each of `attemptIds` has. */
@@ -124,10 +130,7 @@ function attemptsWithQuestions(db: DbReader, sessionId: number): SessionTranscri
         .orderBy(asc(quizQuestions.position))
         .all()
         .map(({ type, prompt, choices, objective, answerKey, answer, correct, feedback }) => ({ type, prompt, choices, objective, answerKey, answer, correct, feedback }));
-      return {
-        number: attempt.number,
-        questions,
-        ...(attempt.correct !== null && { score: { correct: attempt.correct, total: questions.length, passed: attempt.passed === true } }),
-      };
+      const score = scoreOf(attempt, questions.length);
+      return { number: attempt.number, questions, ...(score && { score }) };
     });
 }

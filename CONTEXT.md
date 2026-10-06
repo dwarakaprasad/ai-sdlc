@@ -110,5 +110,5 @@ A Goal the Tutor has handed back to the Parent after too many failed Quiz attemp
 _Avoid_: Failed goal, stuck goal
 
 **Orphaned Goal**:
-A Goal whose Lesson (or Unit) key is no longer in the Learner's Curriculum, because the Parent renumbered or removed it; worked out when shown, never stored. The Parent re-points it to another Lesson or removes it; until then its Subject shows the Learner no card.
+A Goal still to be met whose Lesson (or Unit) key is no longer in the Learner's Curriculum, because the Parent renumbered or removed it; worked out when shown, never stored. The Parent re-points it to another Lesson or removes it; until then its Subject shows the Learner no card.
 _Avoid_: Broken goal, dangling goal

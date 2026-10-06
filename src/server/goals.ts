@@ -125,9 +125,12 @@ function isToBeMet(status: GoalStatus): boolean {
   return status === "active" || status === "flagged";
 }
 
-/** Orphaned: the Goal's Lesson or Unit is gone from a Curriculum that is otherwise valid. Never stored. */
-function isOrphaned(row: GoalRow, targets: Map<string, Target> | undefined): boolean {
-  return targets !== undefined && !targets.has(row.curriculumKey);
+/**
+ * Orphaned: a Goal still to be met whose Lesson or Unit is gone from a Curriculum that is otherwise valid. Never stored.
+ * A met or skipped Goal is history, not work, so it is never orphaned and its Sessions stay as they are.
+ */
+function isOrphaned(row: GoalRow, targets: Map<string, Target> | undefined): targets is Map<string, Target> {
+  return targets !== undefined && isToBeMet(row.status) && !targets.has(row.curriculumKey);
 }
 
 /** A Learner's Goals with their Lesson or Unit titles, each Subject's queue in order. */
@@ -257,15 +260,17 @@ export function parentGoalRoutes(deps: AppDeps) {
       const targets = targetsFor(curriculaDir, learner);
       if (!isOrphaned(goal, targets)) return c.json({ error: "goalNotOrphaned" }, 409);
       const { lessonKey } = (await readJsonObject(c)) ?? {};
-      const target = typeof lessonKey === "string" ? targets!.get(lessonKey) : undefined;
+      const target = typeof lessonKey === "string" ? targets.get(lessonKey) : undefined;
       if (target?.kind !== goal.kind || typeof lessonKey !== "string") return c.json({ error: "unknownLesson" }, 400);
-      const queue = subjectQueue(db, learner.id, target.subjectKey);
-      if (queue.some((g) => g.kind === goal.kind && g.curriculumKey === lessonKey && isToBeMet(g.status))) {
-        return c.json({ error: "lessonHasGoal" }, 409);
-      }
-      // A Goal re-pointed into another Subject joins the end of that Subject's queue.
-      const position = target.subjectKey === goal.subjectKey ? goal.position : Math.max(0, ...queue.map((g) => g.position)) + 1;
-      db.update(goals).set({ curriculumKey: lessonKey, subjectKey: target.subjectKey, position }).where(eq(goals.id, goal.id)).run();
+      const repointed = db.transaction((tx) => {
+        const queue = subjectQueue(tx, learner.id, target.subjectKey);
+        if (queue.some((g) => g.kind === goal.kind && g.curriculumKey === lessonKey && isToBeMet(g.status))) return false;
+        // A Goal re-pointed into another Subject joins the end of that Subject's queue.
+        const position = target.subjectKey === goal.subjectKey ? goal.position : Math.max(0, ...queue.map((g) => g.position)) + 1;
+        tx.update(goals).set({ curriculumKey: lessonKey, subjectKey: target.subjectKey, position }).where(eq(goals.id, goal.id)).run();
+        return true;
+      });
+      if (!repointed) return c.json({ error: "lessonHasGoal" }, 409);
       return c.json(goalNow(found));
     })
     .delete("/goals/:goalId", (c) => {
