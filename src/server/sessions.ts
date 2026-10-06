@@ -56,13 +56,13 @@ export function learnerSessionRoutes(deps: AppDeps) {
         .from(sessions)
         .where(and(eq(sessions.goalId, goal.id), isNull(sessions.endedAt)))
         .get();
-      if (open) return c.json(toTutorSession(db, open, lesson));
+      if (open) return c.json(toTutorSession(db, goal, open, lesson));
       const session = db
         .insert(sessions)
         .values({ goalId: goal.id, ...startState(goal.kind), startedAt: now() })
         .returning()
         .get();
-      return c.json(toTutorSession(db, session, lesson), 201);
+      return c.json(toTutorSession(db, goal, session, lesson), 201);
     })
     .post("/sessions/:id/turn", async (c) => {
       const learner = loggedInLearner(db, c);
@@ -179,7 +179,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
         return true;
       });
       if (!started) return c.json({ error: "sessionChanged" }, 409);
-      return c.json(toTutorSession(db, { ...session, step: "quiz" }, lesson), 201);
+      return c.json(toTutorSession(db, goal, { ...session, step: "quiz" }, lesson), 201);
     })
     .post("/sessions/:id/answer", async (c) => {
       const learner = loggedInLearner(db, c);
@@ -258,11 +258,12 @@ function saveAnswer(
 }
 
 /** The Session as the Learner sees it, with its latest Quiz attempt. */
-function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): TutorSession {
+function toTutorSession(db: Db, goal: GoalRow, session: SessionRow, lesson: TutorLesson): TutorSession {
   const attempt = latestAttempt(db, session.id);
   return {
     id: session.id,
     kind: lesson.kind,
+    subjectKey: goal.subjectKey,
     subjectName: lesson.subjectName,
     title: lesson.title,
     learningObjectives: lesson.learningObjectives,

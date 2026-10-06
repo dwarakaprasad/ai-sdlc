@@ -4,6 +4,7 @@ import { GUARDRAILS } from "../src/tutor";
 import { inFolder, validCurriculum, writeFixture } from "./support/curriculumFixture";
 import { readSse } from "./support/sse";
 import { createTestApp } from "./support/testApp";
+import { goalCards } from "./support/today";
 
 /** validCurriculum plus a second Math Term, so progression can cross the end of a Term. */
 const twoTerms = {
@@ -74,7 +75,7 @@ async function household() {
   const setGoal = async (lessonKey: string, targetDate = "2026-10-20") =>
     (await (await parent(`/api/parent/learners/${ada}/goals`, { lessonKey, targetDate })).json()) as Goal;
   const parentGoals = async (): Promise<Goal[]> => (await parent(`/api/parent/learners/${ada}/goals`)).json();
-  const cards = async (): Promise<GoalCard[]> => (await learner("/api/learner/goals")).json();
+  const cards = async (): Promise<GoalCard[]> => goalCards(learner);
   /** Ada's current Math Goal card. */
   const mathCard = async () => (await cards()).find((card) => card.subjectName === "Math");
 
@@ -253,6 +254,7 @@ describe("The Unit Test", () => {
     expect(session).toEqual({
       id: expect.any(Number),
       kind: "unit-test",
+      subjectKey: "math",
       subjectName: "Math",
       title: "Ratios",
       learningObjectives: UNIT_OBJECTIVES[ratiosUnit],

@@ -89,7 +89,7 @@ export type Goal = {
   overdue: boolean;
   /**
    * Its Lesson (or Unit) is gone from the Learner's Curriculum, say after a renumbering, so its title falls back to its key.
-   * The Parent re-points or removes it; until then its Subject shows the Learner no card. Never set while the Curriculum is invalid.
+   * The Parent re-points or removes it; until then the Learner sees its Subject is with the Parent, with nothing to start. Never set while the Curriculum is invalid.
    */
   orphaned: boolean;
 };
@@ -155,8 +155,25 @@ export type SpreadInput = { termKey: string; termEndDate: string };
 /** Body of PUT /api/parent/learners/:id/goals/order: one Subject's whole queue, every Goal once, in its new order. */
 export type GoalOrder = { goalIds: number[] };
 
-/** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. A Unit Test's title is its Unit's. */
+/** A Subject's current Goal as a card on the Learner's home screen. A Unit Test's title is its Unit's. */
 export type GoalCard = Pick<Goal, "id" | "kind" | "subjectName" | "title" | "targetDate" | "overdue">;
+
+/** How far through its current Term a Subject is: the Term's met Goals, out of its Lessons and Unit Tests. */
+export type TermProgress = { termName: string; met: number; total: number };
+
+/**
+ * One Subject on the Learner's home screen. `card` is its current Goal (the first in its queue still to be met), or null
+ * when there's none, or when that Goal is Flagged or Orphaned and so `withParent`. The current Term is the current Goal's,
+ * or once nothing is left to meet, the last met Goal's; `term` is null when there's no such Term (or the Curriculum is invalid).
+ */
+export type SubjectToday = { subjectKey: string; subjectName: string; card: GoalCard | null; withParent: boolean; term: TermProgress | null };
+
+/**
+ * The Learner's home data (GET /api/learner/goals): one entry per Subject with any Goal, the Subjects with a card first,
+ * earliest Target Date first (so an overdue Goal leads), and the Subjects with the Parent last; and how many Goals the
+ * Learner has met in all.
+ */
+export type LearnerToday = { subjects: SubjectToday[]; goalsMet: number };
 
 /**
  * Where a Session is in the teaching steps: hearing the Explanation, talking through the Understanding Check,
@@ -210,6 +227,7 @@ export type QuizAttempt = { number: number; maxAttempts: number; questions: Quiz
 export type TutorSession = {
   id: number;
   kind: GoalKind;
+  subjectKey: string;
   subjectName: string;
   title: string;
   /** What the Lesson (or every Lesson of a Unit Test's Unit) teaches, for the Learner to see beside the conversation. */

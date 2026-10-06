@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { household } from "./support/household";
 import { GUARDRAILS } from "../src/tutor";
+import { goalCards } from "./support/today";
 
 /** The Learning Objectives of "Understanding ratios", as the Curriculum fixture writes them. */
 const WRITE_A_RATIO = "Write a ratio to describe two quantities.";
@@ -119,7 +120,7 @@ describe("The Lesson Quiz", () => {
     expect(llm.requests.length).toBe(llmCallsBeforeAnswers);
     // The next Lesson becomes the current Goal (see progression.test.ts).
     expect(await parentGoals()).toMatchObject([{ status: "met" }, { title: "Equivalent ratios", status: "active" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toMatchObject([{ title: "Equivalent ratios" }]);
+    expect(await goalCards(learner)).toMatchObject([{ title: "Equivalent ratios" }]);
     expect((await openSession()).status).toBe(409);
   });
 
@@ -185,7 +186,7 @@ describe("The Lesson Quiz", () => {
     expect(results.map((r) => r.step)).toEqual(["re-teaching", "re-teaching", "ended"]);
     expect(results[2].score).toEqual({ correct: 0, total: 10, passed: false });
     expect(await parentGoals()).toMatchObject([{ status: "flagged" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    expect(await goalCards(learner)).toEqual([]);
     expect((await openSession()).status).toBe(409);
     expect((await learner(`/api/learner/sessions/${sessionId}/quiz`, {})).status).toBe(409);
   });
@@ -243,8 +244,8 @@ describe("Resuming a Quiz", () => {
     // Leaving: a fresh browser logs in as the same Learner and taps the card again.
     const again = client();
     await again("/api/learner/login", { learnerId: ada });
-    const [card] = await (await again("/api/learner/goals")).json();
-    const resumed = await (await again(`/api/learner/goals/${card.id}/session`, {})).json();
+    const [card] = await goalCards(again);
+    const resumed = await (await again(`/api/learner/goals/${card!.id}/session`, {})).json();
 
     expect(resumed).toMatchObject({ id: started.id, step: "quiz", quiz: { number: 1 } });
     expect(resumed.quiz.questions.map((q: { id: number }) => q.id)).toEqual(started.quiz.questions.map((q: { id: number }) => q.id));

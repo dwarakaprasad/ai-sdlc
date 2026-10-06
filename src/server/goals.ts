@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono, type Context } from "hono";
 import { join } from "node:path";
 import { loadCurriculum, type Curriculum, type Subject, type Term } from "../curriculum";
-import type { Goal, GoalCard, GoalKind, GoalStatus, LessonOption } from "../shared/api";
+import type { Goal, GoalCard, GoalKind, GoalStatus, LearnerToday, LessonOption, SubjectToday, TermProgress } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { parseId, readJsonObject } from "./http";
 import { learnerFromPath, type LearnerRow } from "./learners";
@@ -147,18 +147,57 @@ export function goalsOf({ db, curriculaDir, now }: AppDeps, learner: LearnerRow)
 }
 
 /**
- * The Learner's Goal cards: each Subject's current Goal (the first in its queue still to be met), earliest Target Date first.
- * A Flagged or orphaned Goal waits for the Parent, so its Subject shows no card until the Parent resolves it.
+ * The Learner's home data: for each Subject with any Goal, its current Goal (the first in its queue still to be met) as a
+ * card, and its current Term's progress; and how many Goals the Learner has met. A Flagged or Orphaned current Goal waits
+ * for the Parent, so its Subject stays, marked as with the Parent, with no card to start until the Parent resolves it.
  */
-export function currentGoals(deps: AppDeps, learner: LearnerRow): GoalCard[] {
-  const current = new Map<string, Goal>();
-  for (const goal of goalsOf(deps, learner)) {
-    if (isToBeMet(goal.status) && !current.has(goal.subjectKey)) current.set(goal.subjectKey, goal);
-  }
-  return [...current.values()]
-    .filter((goal) => goal.status === "active" && !goal.orphaned)
-    .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.subjectName.localeCompare(b.subjectName))
-    .map(({ id, kind, subjectName, title, targetDate, overdue }) => ({ id, kind, subjectName, title, targetDate, overdue }));
+export function learnerToday(deps: AppDeps, learner: LearnerRow): LearnerToday {
+  const learnerGoals = goalsOf(deps, learner);
+  const curriculumSubjects = curriculumOf(deps.curriculaDir, learner)?.subjects ?? [];
+  // goalsOf keeps each Subject's queue in order.
+  const queues = new Map<string, Goal[]>();
+  for (const goal of learnerGoals) queues.set(goal.subjectKey, [...(queues.get(goal.subjectKey) ?? []), goal]);
+  const subjects = [...queues].map(([subjectKey, queue]): SubjectToday => {
+    const current = queue.find((goal) => isToBeMet(goal.status));
+    const withParent = current !== undefined && (current.status === "flagged" || current.orphaned);
+    const subject = curriculumSubjects.find((s) => s.key === subjectKey);
+    return {
+      subjectKey,
+      subjectName: subject?.name ?? queue[0]!.subjectName,
+      card: current && !withParent ? toGoalCard(current) : null,
+      withParent,
+      term: subject ? termProgress(subject, queue, current) : null,
+    };
+  });
+  // Subjects to start first (earliest Target Date leading), then any with nothing left to meet, then those with the Parent.
+  const rank = (s: SubjectToday) => (s.card ? 0 : s.withParent ? 2 : 1);
+  subjects.sort(
+    (a, b) =>
+      rank(a) - rank(b) || (a.card && b.card ? a.card.targetDate.localeCompare(b.card.targetDate) : 0) || a.subjectName.localeCompare(b.subjectName),
+  );
+  return { subjects, goalsMet: learnerGoals.filter((goal) => goal.status === "met").length };
+}
+
+function toGoalCard({ id, kind, subjectName, title, targetDate, overdue }: Goal): GoalCard {
+  return { id, kind, subjectName, title, targetDate, overdue };
+}
+
+/** The Term holding a Lesson, or the Unit of a Unit Test, by its key. */
+function termHolding(subject: Subject, key: string): Term | undefined {
+  return subject.terms.find((term) => term.units.some((unit) => unit.key === key || unit.lessons.some((lesson) => lesson.key === key)));
+}
+
+/**
+ * A Subject's current Term with its met Goals out of its Lessons and Unit Tests. The current Term is the current Goal's;
+ * when there's none (or it's Orphaned, so has no Term), it's the Term of the last met Goal in the queue.
+ */
+function termProgress(subject: Subject, queue: Goal[], current: Goal | undefined): TermProgress | null {
+  const lastMet = [...queue].reverse().find((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey));
+  const term = (current && termHolding(subject, current.lessonKey)) ?? (lastMet && termHolding(subject, lastMet.lessonKey));
+  if (!term) return null;
+  const total = term.units.reduce((sum, unit) => sum + unit.lessons.length + 1, 0);
+  const met = queue.filter((goal) => goal.status === "met" && termHolding(subject, goal.lessonKey) === term).length;
+  return { termName: term.name, met, total };
 }
 
 /** The Parent's Goals for one Learner, mounted under the Parent's protected routes at /learners/:id. */

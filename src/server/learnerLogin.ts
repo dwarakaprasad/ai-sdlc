@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { isAccentColor, isAvatarId } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { endLogin, requireRole, startLogin, verifyPassword } from "./auth";
-import { currentGoals } from "./goals";
+import { learnerToday } from "./goals";
 import { readJsonObject } from "./http";
 import { allLearners, findLearner, loggedInLearner, saveAvatar, toLearnerProfile, toLoggedInLearner } from "./learners";
 import { learnerSessionRoutes } from "./sessions";
@@ -30,7 +30,7 @@ export function learnerRoutes(deps: AppDeps) {
     .get("/goals", (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      return c.json(currentGoals(deps, learner));
+      return c.json(learnerToday(deps, learner));
     })
     .route("/", learnerSessionRoutes(deps));
 
