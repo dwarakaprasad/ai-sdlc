@@ -35,6 +35,9 @@ const weekday = (date: string) => localDay(date).toLocaleDateString("en-US", { w
 /** A Streak's length, e.g. "1 day" or "6 days". */
 const streakDays = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;
 
+/** How many errors an invalid Curriculum has, e.g. "1 error" or "3 errors". */
+const errorCount = (count: number) => `${count} ${count === 1 ? "error" : "errors"}`;
+
 /**
  * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
  * "math/term-1/unit-2" as "U1.2"; any other key (an Orphaned Goal's, say) as it is.
@@ -424,16 +427,16 @@ export const text = {
   usage: {
     heading: "Token usage",
     none: "No tokens used yet.",
-    day: (date: string, calls: number, input: number, output: number) =>
-      `${date}: ${input.toLocaleString()} in, ${output.toLocaleString()} out (${calls} ${calls === 1 ? "call" : "calls"})`,
+    columns: { date: "Day", input: "Tokens in", output: "Tokens out", calls: "Calls" },
   },
   curricula: {
     heading: "Curricula",
     none: "No Curriculum folders found. Add one to the curricula folder (see docs/curriculum-format.md).",
     details: (district: string, grade: string, schoolYear: string) => `${district} · Grade ${grade} · ${schoolYear}`,
+    errorCount,
     subject: (name: string, lessons: number) => `${name}: ${lessons} ${lessons === 1 ? "Lesson" : "Lessons"}`,
     invalid: (count: number) =>
-      `This Curriculum has ${count} ${count === 1 ? "error" : "errors"} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
+      `This Curriculum has ${errorCount(count)} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
     location: (file: string, line?: number) => (line === undefined ? file : `${file}:${line}`),
   },
 } as const;
