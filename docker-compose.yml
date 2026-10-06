@@ -1,0 +1,20 @@
+services:
+  home-tutor:
+    build: .
+    # Run as your host user so files in ./data stay yours; set these if your user id isn't 1000 (see `id`).
+    user: "${HOME_TUTOR_UID:-1000}:${HOME_TUTOR_GID:-1000}"
+    ports:
+      - "${HOME_TUTOR_PORT:-3000}:3000"
+    # API keys are passed through from .env (ADR 0002); they are never baked into the image.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fixed inside the container, whatever .env says; change the host port with HOME_TUTOR_PORT.
+      PORT: 3000
+      HOME_TUTOR_DATA_DIR: /app/data
+      HOME_TUTOR_CURRICULA_DIR: /app/curricula
+    volumes:
+      - ./data:/app/data
+      - ./curricula:/app/curricula:ro
+    restart: unless-stopped
