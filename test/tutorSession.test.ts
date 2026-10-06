@@ -156,6 +156,17 @@ describe("The Understanding Check", () => {
     expect(await parentGoals()).toMatchObject([{ status: "flagged" }]);
   });
 
+  it("takes no more turns once the Parent skips the Goal", async () => {
+    const { parent, ada, goalId, turn, startLesson } = await household();
+    const sessionId = await startLesson();
+
+    await parent(`/api/parent/learners/${ada}/goals/${goalId}/skip`, {});
+    const res = await turn(sessionId, "2 to 3");
+
+    expect(res.status).toBe(409);
+    expect(res.error).toEqual({ error: "goalNotActive" });
+  });
+
   it("needs a message from the Learner", async () => {
     const { turn, startLesson } = await household();
     const sessionId = await startLesson();

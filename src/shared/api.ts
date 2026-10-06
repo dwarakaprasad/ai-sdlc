@@ -55,11 +55,27 @@ export type Goal = {
   overdue: boolean;
 };
 
-/** A Lesson a Goal can be set from (GET /api/parent/learners/:id/lessons), in Curriculum order. */
-export type LessonOption = { key: string; subjectName: string; unitTitle: string; title: string };
+/** A Lesson a Goal can be set from (GET /api/parent/learners/:id/lessons), in Curriculum order, with the Term it belongs to. */
+export type LessonOption = { key: string; subjectName: string; termKey: string; termName: string; unitTitle: string; title: string };
 
-/** Body of POST /api/parent/learners/:id/goals. */
-export type GoalInput = { lessonKey: string; targetDate: string };
+/**
+ * Body of POST /api/parent/learners/:id/goals. The new Goal joins the end of its Subject's queue,
+ * or is inserted just before `beforeGoalId`, a Goal of the same Subject.
+ */
+export type GoalInput = { lessonKey: string; targetDate: string; beforeGoalId?: number };
+
+/**
+ * Body of POST /api/parent/learners/:id/goals/spread, which answers with all the Learner's Goals.
+ * Spreads Target Dates evenly from today to `termEndDate` over the Term's Lessons still to be met, creating Goals for
+ * Lessons that have none. `termEndDate` is YYYY-MM-DD, today or later.
+ */
+export type SpreadInput = { termKey: string; termEndDate: string };
+
+/** Body of PUT /api/parent/learners/:id/goals/order: one Subject's whole queue, every Goal once, in its new order. */
+export type GoalOrder = { goalIds: number[] };
+
+/** Body of PATCH /api/parent/learners/:id/goals/:goalId: a new Target Date for that Goal alone. */
+export type TargetDateInput = { targetDate: string };
 
 /** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. */
 export type GoalCard = Pick<Goal, "id" | "subjectName" | "title" | "targetDate" | "overdue">;

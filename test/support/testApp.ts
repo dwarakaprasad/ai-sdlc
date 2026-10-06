@@ -25,7 +25,7 @@ export function createTestApp(
   function client() {
     let cookie = "";
     /** GET without a body, POST with one, unless `method` says otherwise. */
-    return async function request(path: string, body?: unknown, method?: "PUT" | "DELETE") {
+    return async function request(path: string, body?: unknown, method?: "PUT" | "PATCH" | "DELETE") {
       const headers: Record<string, string> = {};
       if (cookie) headers.cookie = cookie;
       if (body !== undefined) headers["content-type"] = "application/json";
