@@ -50,7 +50,7 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
 
   // The Explanation streams in: its start shows before its end has arrived.
   await expect(page.getByRole("heading", { name: "Understanding ratios" })).toBeVisible();
-  const transcript = page.getByRole("list");
+  const transcript = page.getByRole("list", { name: "Conversation" });
   await expect(transcript).toContainText("A ratio compares");
   await expect(transcript).not.toContainText("4 cats to 5 dogs?");
   await expect(transcript).toContainText(EXPLANATION);
@@ -68,15 +68,18 @@ test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, pas
   for (const [i, question] of QUIZ.entries()) {
     await expect(page.getByText(`Question ${i + 1} of ${QUIZ.length}`)).toBeVisible();
     await page.getByLabel("Your answer").fill(question.answer);
-    await page.getByRole("button", { name: "Check my answer" }).click();
-    await expect(page.getByText("That's right!")).toBeVisible();
-    await page.getByRole("button", { name: i + 1 < QUIZ.length ? "Next question" : "See my score" }).click();
+    await page.getByRole("button", { name: "Check", exact: true }).click();
+    await expect(page.getByText("Correct.")).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
   }
 
-  // Goal met.
-  await expect(page.getByText(`You got ${QUIZ.length} out of ${QUIZ.length} right.`)).toBeVisible();
-  await expect(page.getByText("You've mastered this Lesson. Goal met!")).toBeVisible();
-  await page.getByRole("button", { name: "Back to my Goals" }).click();
+  // Goal met, with the Subject's next Lesson up next.
+  await expect(page.getByText("Goal met · Math")).toBeVisible();
+  await expect(page.getByText(`${QUIZ.length} of ${QUIZ.length} on the Lesson Quiz.`)).toBeVisible();
+  const upNext = page.getByRole("article").filter({ hasText: "Up next" });
+  await expect(upNext).toContainText("Equivalent ratios");
+  await expect(upNext.getByRole("button", { name: "Start" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to Today" }).click();
   // The met Goal has gone and its Subject has moved on to the next Lesson.
   await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
   await expect(page.getByRole("article").filter({ hasText: "Understanding ratios" })).toHaveCount(0);

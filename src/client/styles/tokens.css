@@ -27,6 +27,13 @@
   --lilac: #7b5cc4;
   --lilac-soft: #f2eefb;
   --shape: rgba(22, 24, 29, 0.15);
+  --line-strong: #cfccc2;
+  --line-hover: #bdbab0;
+  --green-ink: #145c34;
+  --warm-ink: #8a3a12;
+  --on-ink-muted: #a5a8b3;
+  --yellow-edge: #c9a21f;
+  --lift: 0 12px 40px rgba(22, 24, 29, 0.05);
 
   /* Spacing */
   --s-1: 4px;
@@ -36,12 +43,14 @@
   --s-5: 20px;
   --s-6: 24px;
   --s-7: 32px;
+  --s-8: 40px;
   --s-9: 56px;
 
   /* Radii */
   --r-card: 16px;
   --r-card-lg: 20px;
   --r-btn: 10px;
+  --r-field: 12px;
   --r-tag: 6px;
   --r-pill: 999px;
 
@@ -52,17 +61,26 @@
   --t-h3: 15px;
   --t-body: 16px;
   --t-wordmark-small: 17px;
+  --t-feedback: 17px;
   --t-lead: 18px;
+  --t-option: 19px;
   --t-wordmark: 20px;
   --t-name: 22px;
   --t-h2: 24px;
+  --t-prompt: 26px;
   --t-h1: 30px;
+  --t-big: 40px;
   --t-display: 44px;
+  --t-score: 96px;
 
   /* Motion: subtle only, and all of it off under prefers-reduced-motion (base.css). */
   --m-fast: 80ms;
   --m-base: 150ms;
   --m-enter: 280ms;
+  --m-draw-tick: 400ms;
+  --m-bounce: 450ms;
+  --m-draw: 800ms;
+  --ease-bounce: cubic-bezier(0.3, 1.6, 0.6, 1);
 
   /* Touch: the smallest control anywhere. */
   --touch: 44px;

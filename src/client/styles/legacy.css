@@ -77,20 +77,8 @@ main.legacy {
 :where(.legacy) .orphaned {
   margin: 0.25rem 0 0.75rem;
 }
-:where(.legacy) .break {
-  padding: 0.75rem;
-  border-radius: 8px;
-  background: var(--yellow-soft);
-}
 main.legacy:has(.curriculum) {
   max-width: 48rem;
-}
-:where(.legacy) .session .subject {
-  margin: 1rem 0 0;
-  color: var(--muted);
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 :where(.legacy) .transcript {
   list-style: none;
@@ -127,43 +115,4 @@ main.legacy:has(.curriculum) {
 :where(.legacy) textarea {
   font: inherit;
   padding: 0.5rem;
-}
-main.legacy:has(.session) {
-  max-width: 40rem;
-}
-:where(.legacy) .quiz .prompt {
-  font-size: 1.125rem;
-  line-height: 1.5;
-  margin: 0.5rem 0 1rem;
-}
-:where(.legacy) .quiz .choices {
-  border: none;
-  padding: 0;
-  margin: 0 0 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-:where(.legacy) .quiz .choice {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  cursor: pointer;
-}
-:where(.legacy) .quiz .feedback {
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-}
-:where(.legacy) .quiz .feedback.right {
-  background: var(--green-soft);
-}
-:where(.legacy) .quiz .feedback.wrong {
-  background: var(--warm-soft);
-}
-:where(.legacy) .quiz .score {
-  font-size: 1.25rem;
-  font-weight: 600;
 }

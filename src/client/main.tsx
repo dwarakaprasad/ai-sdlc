@@ -7,6 +7,7 @@ import "./styles/tokens.css";
 import "./styles/base.css";
 import "./components/components.css";
 import "./learner/learner.css";
+import "./learner/session.css";
 import "./styles/legacy.css";
 import { text } from "./text";
 

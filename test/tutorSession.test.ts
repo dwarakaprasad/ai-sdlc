@@ -16,6 +16,7 @@ describe("Starting a Tutor Session", () => {
       kind: "lesson",
       subjectName: "Math",
       title: "Understanding ratios",
+      learningObjectives: ["Write a ratio to describe two quantities.", 'Use ratio language such as "for every".'],
       step: "explanation",
       messages: [],
       breakMinutes: 25,
@@ -201,6 +202,7 @@ describe("Resuming a Session", () => {
       kind: "lesson",
       subjectName: "Math",
       title: "Understanding ratios",
+      learningObjectives: ["Write a ratio to describe two quantities.", 'Use ratio language such as "for every".'],
       step: "understanding-check",
       messages: [
         { role: "tutor", content: "Ratios compare. What's 2 cats to 3 dogs?" },
