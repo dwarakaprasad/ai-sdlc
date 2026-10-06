@@ -110,5 +110,19 @@ A Goal the Tutor has handed back to the Parent after too many failed Quiz attemp
 _Avoid_: Failed goal, stuck goal
 
 **Orphaned Goal**:
-A Goal still to be met whose Lesson (or Unit) key is no longer in the Learner's Curriculum, because the Parent renumbered or removed it; worked out when shown, never stored. The Parent re-points it to another Lesson or removes it; until then its Subject shows the Learner no card.
+A Goal still to be met whose Lesson (or Unit) key is no longer in the Learner's Curriculum, because the Parent renumbered or removed it; worked out when shown, never stored. The Parent re-points it to another Lesson or removes it; until then the Learner sees that Subject is with the Parent, with nothing to start.
 _Avoid_: Broken goal, dangling goal
+
+### Progress the Learner sees
+
+**Learning Path**:
+A Subject's Lessons and Unit Tests for the current Term, in Curriculum order, each shown by the state of its Goal (met, current, skipped, with the Parent, or ahead). It shows progress; the Goal queue, not the Path, decides what comes next.
+_Avoid_: Map, roadmap, journey
+
+**Streak**:
+The run of consecutive days on which a Learner sent the Tutor a message or answered a Quiz question; Saturdays and Sundays add to it but never break it. Worked out when shown, never stored.
+_Avoid_: Chain, combo
+
+**Avatar**:
+The picture and accent colour a Learner chooses to mark their profile, from a fixed set the app ships with.
+_Avoid_: Profile picture, icon
