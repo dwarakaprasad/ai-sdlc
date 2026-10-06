@@ -24,3 +24,4 @@ export const StarIcon = (p: IconProps) => <Icon {...p}><path d="M12 3.5l2.6 5.3 
 export const ParentIcon = (p: IconProps) => <Icon {...p}><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="10" r="2.2" /><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8M14.5 15c2.6-.4 4.9.9 5.5 3.6" /></Icon>;
 export const SkipIcon = (p: IconProps) => <Icon {...p}><path d="M6 6l7 6-7 6zM16.5 6v12" /></Icon>;
 export const TrophyIcon = (p: IconProps) => <Icon {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4" /></Icon>;
+export const FlameIcon = (p: IconProps) => <Icon {...p}><path d="M12 21c-4 0-6.5-2.6-6.5-6 0-3.8 3.2-5.6 3.6-9.5 2.6 1.4 4.2 3.6 4.4 5.6.8-.6 1.4-1.6 1.6-2.7 1.9 1.6 3.4 4 3.4 6.6 0 3.4-2.5 6-6.5 6z" /></Icon>;

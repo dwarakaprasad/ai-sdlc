@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import type { LearnerToday, QuizScore, TutorSession } from "../../shared/api";
 import { api } from "../api";
-import { ArrowIcon, StarIcon } from "../components/icons";
+import { ArrowIcon, FlameIcon, StarIcon } from "../components/icons";
 import { Confetti } from "../components/Confetti";
 import { Button } from "../components/ui";
 import { text } from "../text";
 
 /**
- * The Goal-met celebration: a drawn check and light confetti, the score, the Learner's Goals met and the Subject's Term
- * progress, and the Subject's next Goal ready to start. Meeting the Goal has already moved the Subject's queue on, so these
+ * The Goal-met celebration: a drawn check and light confetti, the score, the Learner's Goals met, their Streak and the
+ * Subject's Term progress, and the Subject's next Goal ready to start. Meeting the Goal has already moved the Subject's queue on, so these
  * come from the home data as it now is.
  */
 export function GoalMet({
@@ -44,6 +44,12 @@ export function GoalMet({
             <dt>{text.goalMet.goalsMet}</dt>
             <dd className="goal-met-goals">
               <StarIcon size={18} /> {today.goalsMet}
+            </dd>
+          </div>
+          <div>
+            <dt>{text.streak.heading}</dt>
+            <dd className="goal-met-streak">
+              <FlameIcon size={18} /> {text.streak.days(today.streak.days)}
             </dd>
           </div>
           {subject?.term && (

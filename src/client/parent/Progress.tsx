@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import type { GoalProgress, Learner, SessionTranscript } from "../../shared/api";
+import type { GoalProgress, Learner, LearnerProgress, SessionTranscript } from "../../shared/api";
 import { api } from "../api";
-import { BackIcon } from "../components/icons";
+import { BackIcon, FlameIcon } from "../components/icons";
 import { MathText } from "../components/MathText";
 import { TutorMark } from "../components/TutorMark";
 import { Button, Card, Tag } from "../components/ui";
 import { text } from "../text";
 
 /**
- * A Learner's progress for the Parent: how many Goals are met, overdue, flagged or orphaned, and under each Goal its
+ * A Learner's progress for the Parent: how many Goals are met, overdue, flagged or orphaned, their Streak, and under each Goal its
  * Sessions with every finished Quiz attempt's score, and a transcript to read.
  */
 export function Progress({ learner }: { learner: Learner }) {
-  const [progress, setProgress] = useState<GoalProgress[]>();
+  const [progress, setProgress] = useState<LearnerProgress>();
   const [transcript, setTranscript] = useState<SessionTranscript>();
   const [error, setError] = useState<string>();
 
@@ -25,8 +25,9 @@ export function Progress({ learner }: { learner: Learner }) {
   if (transcript) return <Transcript transcript={transcript} learnerName={learner.name} onClose={() => setTranscript(undefined)} />;
   if (error) return <p className="text-warm">{error}</p>;
   if (!progress) return <p className="muted">{text.loading}</p>;
-  if (progress.length === 0) return <p className="muted">{text.progress.noGoals}</p>;
-  const count = (has: (g: GoalProgress) => boolean) => progress.filter(has).length;
+  const { goals, streak } = progress;
+  if (goals.length === 0) return <p className="muted">{text.progress.noGoals}</p>;
+  const count = (has: (g: GoalProgress) => boolean) => goals.filter(has).length;
   const summary = [
     ["met", count((g) => g.status === "met")],
     ["overdue", count((g) => g.overdue)],
@@ -42,9 +43,15 @@ export function Progress({ learner }: { learner: Learner }) {
             <dd>{n}</dd>
           </div>
         ))}
+        <div className="card stat stat-streak">
+          <dt className="eyebrow">{text.progress.streak}</dt>
+          <dd>
+            <FlameIcon size={20} /> {streak}
+          </dd>
+        </div>
       </dl>
       <ul className="progress-goals">
-        {progress.map((goal) => (
+        {goals.map((goal) => (
           <li key={goal.id} className="card progress-goal">
             <div className="progress-goal-head">
               <span className="eyebrow">{goal.subjectName}</span>

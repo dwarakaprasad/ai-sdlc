@@ -400,3 +400,66 @@
 .dense .tutor-text {
   font-size: var(--t-dense);
 }
+
+/* Streak (Streak.tsx): orange, the Streak's colour. A chip for the top bar, and the last seven days */
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-weight: 800;
+  color: var(--orange);
+}
+.streak-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-bottom: var(--s-4);
+  margin-bottom: var(--s-4);
+  border-bottom: 1px solid var(--line);
+}
+.achievement-streak .icon {
+  color: var(--orange);
+}
+.streak-start {
+  display: block;
+  color: var(--ink);
+}
+.streak-days {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  margin: var(--s-2) 0 0;
+  padding: 0;
+}
+.streak-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-1);
+}
+.streak-day > span[aria-hidden] {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-tag);
+  background: var(--line);
+}
+.streak-worked > span[aria-hidden] {
+  background: var(--orange);
+}
+.streak-today > span[aria-hidden] {
+  background: var(--card);
+  border: 2.5px solid var(--orange);
+}
+.streak-rest > span[aria-hidden] {
+  background: transparent;
+  border: 1.5px dashed var(--line-strong);
+}
+.streak-day small {
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  color: var(--muted);
+}
+.streak-week .streak-note {
+  margin: 0;
+  font-size: var(--t-small);
+}

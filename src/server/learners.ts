@@ -18,6 +18,7 @@ import type { AppDeps } from "./deps";
 import { currentLogin, hashPassword } from "./auth";
 import { goalsOf } from "./goals";
 import { parseId, readJsonObject } from "./http";
+import { streakOf } from "./streak";
 import type { Db } from "./db";
 import { learners } from "./db/schema";
 
@@ -128,7 +129,8 @@ export function parentLearnerRoutes(deps: AppDeps) {
 function learnerAsParentSees(deps: AppDeps, row: LearnerRow): Learner {
   const { id, name, grade, curriculumId } = row;
   const attention = goalsOf(deps, row).filter(needsAttention).length;
-  return { id, name, grade, curriculumId, hasPin: hasPin(row), needsAttention: attention, ...avatarOf(row) };
+  const streak = streakOf(deps.db, id, deps.now()).days;
+  return { id, name, grade, curriculumId, hasPin: hasPin(row), needsAttention: attention, streak, ...avatarOf(row) };
 }
 
 type LearnerInputError = {

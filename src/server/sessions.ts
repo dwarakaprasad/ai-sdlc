@@ -24,6 +24,7 @@ import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
 import { appLlm } from "./llm";
 import { limitSettings, teachingSettings } from "./settings";
+import { recordCapRefusal } from "./streak";
 import { dailyLimitReached, localDate } from "./usage";
 
 type SessionRow = typeof sessions.$inferSelect;
@@ -38,6 +39,13 @@ export function learnerSessionRoutes(deps: AppDeps) {
   const tutorLesson = (learner: LearnerRow, goal: GoalRow): TutorLesson | undefined => {
     const content = contentOfGoal(curriculaDir, learner, goal);
     return content && toTutorLesson(content);
+  };
+  /** Whether the daily token cap refuses the Learner now. A refusal is recorded, as the day still counts towards their Streak. */
+  const capRefuses = (learner: LearnerRow): boolean => {
+    const at = now();
+    if (!dailyLimitReached(db, at)) return false;
+    recordCapRefusal(db, learner.id, at);
+    return true;
   };
 
   return new Hono()
@@ -82,7 +90,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (check === "noTurnNow") return c.json({ error: "noTurnNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
-      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       const turn = tutorTurn(
         {
@@ -146,7 +154,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (session.step !== "ready-for-quiz") return c.json({ error: "noQuizNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
-      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       // Every attempt gets new questions: none may repeat one the Session has already asked.
       const earlier = db
@@ -204,7 +212,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (!content) return c.json({ error: "lessonUnavailable" }, 409);
       const lesson = toTutorLesson(content);
       // Only a written answer is graded by the LLM; the app checks the others itself, so they go on past the cap.
-      if (question.type === "short-answer" && dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (question.type === "short-answer" && capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       const grade = await llmCall(() => gradeAnswer(appLlm(deps), lesson, learner.grade, question, given));
       if (!grade) return c.json({ error: "llmFailed" }, 502);

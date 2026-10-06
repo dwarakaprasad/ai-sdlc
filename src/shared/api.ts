@@ -42,9 +42,9 @@ export type AvatarChoice = { avatar: AvatarId | null; color: AccentColor };
 
 /**
  * A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. `needsAttention` counts the
- * Learner's Goals that need the Parent (see needsAttention), worked out on each request.
+ * Learner's Goals that need the Parent (see needsAttention), and `streak` is the length of their Streak; both worked out on each request.
  */
-export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean; needsAttention: number } & AvatarChoice;
+export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean; needsAttention: number; streak: number } & AvatarChoice;
 
 /**
  * Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it;
@@ -112,8 +112,11 @@ export type SessionSummary = {
   attempts: ({ number: number } & QuizScore)[];
 };
 
-/** One Goal in the progress view (GET /api/parent/learners/:id/progress): the Goal, with its Sessions oldest first. */
+/** One Goal in the progress view: the Goal, with its Sessions oldest first. */
 export type GoalProgress = Goal & { sessions: SessionSummary[] };
+
+/** A Learner's progress for the Parent (GET /api/parent/learners/:id/progress): the length of their Streak, and each Goal's progress. */
+export type LearnerProgress = { streak: number; goals: GoalProgress[] };
 
 /** A Quiz question as the Parent reads it in a transcript: with its answer key, and the Learner's answer once given. */
 export type TranscriptQuestion = {
@@ -195,10 +198,19 @@ export type LearningPath = { subjectName: string; termName: string; units: { key
 
 /**
  * The Learner's home data (GET /api/learner/goals): one entry per Subject with any Goal, the Subjects with a card first,
- * earliest Target Date first (so an overdue Goal leads), and the Subjects with the Parent last; and how many Goals the
- * Learner has met in all.
+ * earliest Target Date first (so an overdue Goal leads), and the Subjects with the Parent last; how many Goals the
+ * Learner has met in all; and their Streak.
  */
-export type LearnerToday = { subjects: SubjectToday[]; goalsMet: number };
+export type LearnerToday = { subjects: SubjectToday[]; goalsMet: number; streak: Streak };
+
+/**
+ * How a day shows in the Streak's week: `worked` counted, `rest` is a Saturday or Sunday that didn't count (it never breaks
+ * the Streak), `missed` is a weekday that didn't count, and `today` is today while it hasn't counted yet.
+ */
+export type StreakDayState = "worked" | "rest" | "missed" | "today";
+
+/** The Streak: its length in days, and the last seven days (YYYY-MM-DD, local), oldest first and ending today. */
+export type Streak = { days: number; week: { date: string; state: StreakDayState }[] };
 
 /**
  * Where a Session is in the teaching steps: hearing the Explanation, talking through the Understanding Check,

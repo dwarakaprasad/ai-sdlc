@@ -147,3 +147,15 @@ export const quizQuestions = sqliteTable("quiz_questions", {
   feedback: text("feedback"),
   answeredAt: integer("answered_at", { mode: "timestamp" }),
 });
+
+/**
+ * A Learner's request refused because the household's daily token cap was reached. A refusal leaves no message or answer,
+ * yet the day still counts towards the Streak, so it is kept: only who and when.
+ */
+export const capRefusals = sqliteTable("cap_refusals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  learnerId: integer("learner_id")
+    .notNull()
+    .references(() => learners.id, { onDelete: "cascade" }),
+  at: integer("at", { mode: "timestamp" }).notNull(),
+});

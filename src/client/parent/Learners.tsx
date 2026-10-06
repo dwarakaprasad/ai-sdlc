@@ -125,7 +125,7 @@ function LearnerPanel({
         <Avatar {...learner} size={48} />
         <div className="parent-head-title">
           <h1 className="h2">{learner.name}</h1>
-          <span className="muted">{text.learners.details(learner.grade, learner.curriculumId, learner.hasPin)}</span>
+          <span className="muted">{text.learners.details(learner.grade, learner.curriculumId, learner.hasPin, learner.streak)}</span>
         </div>
         <Button kind="outline" onClick={() => setView("edit")}>
           {text.learners.edit}

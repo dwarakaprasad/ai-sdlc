@@ -589,6 +589,9 @@
 .goal-met-stats .goal-met-goals {
   color: var(--gold);
 }
+.goal-met-stats .goal-met-streak {
+  color: var(--orange);
+}
 .up-next {
   display: flex;
   gap: var(--s-5);

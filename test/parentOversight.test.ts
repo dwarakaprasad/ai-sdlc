@@ -1,7 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { Goal, GoalCard, GoalProgress, Learner, SessionTranscript } from "../src/shared/api";
+import type { Goal, GoalCard, GoalProgress, Learner, LearnerProgress, SessionTranscript } from "../src/shared/api";
 import { validCurriculum } from "./support/curriculumFixture";
 import { household, ratios } from "./support/household";
 import { goalCards } from "./support/today";
@@ -59,7 +59,7 @@ async function oversight() {
     await turn(session.id, "I don't get it");
     return session.id as number;
   };
-  const progress = async (): Promise<GoalProgress[]> => (await parent(`/api/parent/learners/${ada}/progress`)).json();
+  const progress = async (): Promise<GoalProgress[]> => ((await (await parent(`/api/parent/learners/${ada}/progress`)).json()) as LearnerProgress).goals;
   const goalAction = (goalId: number, action: string, body: unknown = {}) => parent(`/api/parent/learners/${ada}/goals/${goalId}/${action}`, body);
   const cards = async (): Promise<GoalCard[]> => goalCards(learner);
   const setGoal = async (lessonKey: string, targetDate = "2026-10-20") =>
