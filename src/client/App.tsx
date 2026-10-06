@@ -508,6 +508,8 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
     try {
       const opened = await api.openSession(goalId);
       if (isCancelled()) return;
+      if ("error" in opened) return setError(text.session.errors[opened.error] ?? text.genericError);
+      setError(undefined);
       setSession(opened);
       if (opened.step === "explanation") await takeTurn(opened);
     } catch {
@@ -532,7 +534,8 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
     if ("step" in result) return setSession({ ...current, step: result.step, messages: [...pending, { role: "tutor", content: reply }] });
     setSession(current);
     if (message !== undefined) setDraft(message);
-    // Another tab moved the Session on first: show where it is now.
+    // Another tab moved the Session on first: show where it is now. A turn refused because the Curriculum became invalid
+    // also lands here, and re-opening the Session shows the Learner why.
     if (result.error === "sessionChanged") return open();
     if (result.error === "dailyLimitReached") return setLimited(true);
     setFailed(true);
@@ -631,7 +634,8 @@ function SessionChat({ goalId, onBack }: { goalId: number; onBack: () => void })
 function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; onStarted: (s: TutorSession) => void; onChanged: () => void }) {
   const [writing, setWriting] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [limited, setLimited] = useState(false);
+  /** Why the Quiz can't start today: the daily token cap, or a Curriculum the Parent needs to fix. */
+  const [stopped, setStopped] = useState<string>();
 
   async function start() {
     setWriting(true);
@@ -641,12 +645,12 @@ function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; o
     if ("id" in result) return onStarted(result);
     // Another tab started the attempt first: show it.
     if (result.error === "sessionChanged" || result.error === "noQuizNow") return onChanged();
-    if (result.error === "dailyLimitReached") return setLimited(true);
+    if (result.error === "dailyLimitReached" || result.error === "lessonUnavailable") return setStopped(text.quiz.errors[result.error]);
     setFailed(true);
   }
 
   if (writing) return <p className="hint" aria-live="polite">{text.quiz.writing}</p>;
-  if (limited) return <p className="hint">{text.session.dailyLimit}</p>;
+  if (stopped) return <p className="hint">{stopped}</p>;
   return (
     <div className="quiz">
       {failed && <p className="error">{text.quiz.failed}</p>}

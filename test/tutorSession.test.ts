@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GUARDRAILS } from "../src/tutor";
 import { household } from "./support/household";
@@ -253,6 +255,37 @@ describe("Resuming a Session", () => {
     expect((await turn(sessionId, "2 to 3")).error).toEqual({ error: "llmFailed" });
 
     expect((await (await openSession()).json()).messages).toHaveLength(1);
+  });
+});
+
+describe("An invalid Curriculum", () => {
+  it("won't start a Session, without calling the LLM", async () => {
+    const { llm, openSession, curriculumFolder } = await household();
+    writeFileSync(join(curriculumFolder, "math/term-1.md"), "not a Curriculum");
+
+    const res = await openSession();
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "lessonUnavailable" });
+    expect(llm.requests).toEqual([]);
+  });
+
+  it("stops an open Session's teaching until the Parent fixes it, then carries on where it left off", async () => {
+    const { llm, openSession, turn, startLesson, curriculumFolder } = await household();
+    const sessionId = await startLesson();
+    const termFile = join(curriculumFolder, "math/term-1.md");
+    const valid = readFileSync(termFile, "utf8");
+    writeFileSync(termFile, "not a Curriculum");
+    const requestsBefore = llm.requests.length;
+
+    const res = await turn(sessionId, "2 to 3");
+
+    expect(res.status).toBe(409);
+    expect(res.error).toEqual({ error: "lessonUnavailable" });
+    expect(llm.requests).toHaveLength(requestsBefore);
+
+    writeFileSync(termFile, valid);
+    expect(await (await openSession()).json()).toMatchObject({ id: sessionId, step: "understanding-check" });
   });
 });
 
