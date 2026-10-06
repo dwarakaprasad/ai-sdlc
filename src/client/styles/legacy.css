@@ -1,170 +1,142 @@
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #f7f7f5;
-  color: #1f1f1f;
-}
-main {
+/* The pre-redesign styles, kept only for screens not yet re-skinned (inside <main class="legacy">). Each re-skin ticket removes its part. */
+main.legacy {
   max-width: 28rem;
   margin: 4rem auto;
   padding: 0 1rem;
 }
-form {
+:where(.legacy) form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
-label {
+:where(.legacy) label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
-button {
+:where(.legacy) button {
   font: inherit;
   padding: 0.5rem 1rem;
   cursor: pointer;
 }
-.hint {
-  color: #666;
+:where(.legacy) .hint {
+  color: var(--muted);
   font-size: 0.875rem;
 }
-.error {
-  color: #b00020;
+:where(.legacy) .error {
+  color: var(--warm);
 }
-.curriculum,
-.card {
-  border: 1px solid #ddd;
+:where(.legacy) .curriculum,
+:where(.legacy) .card {
+  border: 1px solid var(--line);
   border-radius: 6px;
   padding: 0 1rem;
   margin-bottom: 1rem;
-  background: #fff;
+  background: var(--card);
 }
-.errors li {
+:where(.legacy) .errors li {
   margin-bottom: 0.25rem;
 }
-.card {
+:where(.legacy) .card {
   padding: 0.5rem 1rem 1rem;
 }
-input,
-select {
+:where(.legacy) input,
+:where(.legacy) select {
   font: inherit;
   padding: 0.5rem;
 }
-.checkbox {
+:where(.legacy) .checkbox {
   flex-direction: row;
   align-items: center;
 }
-.actions {
+:where(.legacy) .actions {
   display: flex;
   gap: 0.5rem;
 }
-.profiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.profile {
-  font-size: 1.25rem;
-  padding: 1rem 1.5rem;
-}
-.link {
+:where(.legacy) .link {
   background: none;
   border: none;
   padding: 0;
-  color: #0b57d0;
+  color: var(--ink);
   text-decoration: underline;
   align-self: flex-start;
 }
-.goals {
+:where(.legacy) .goals {
   padding-left: 1.25rem;
 }
-.goal-actions {
+:where(.legacy) .goal-actions {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.25rem;
   margin-left: 0.5rem;
 }
-.overdue {
-  color: #b00020;
+:where(.legacy) .overdue {
+  color: var(--warm);
   font-weight: 600;
 }
-.orphaned {
+:where(.legacy) .orphaned {
   margin: 0.25rem 0 0.75rem;
 }
-.break {
+:where(.legacy) .break {
   padding: 0.75rem;
   border-radius: 8px;
-  background: #fff6d6;
+  background: var(--yellow-soft);
 }
-.goal-card {
-  border-left: 4px solid #0b57d0;
-}
-.goal-card.catch-up {
-  border-left-color: #e0a100;
-}
-.goal-card .subject {
-  margin: 0.5rem 0 0;
-  color: #666;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-main:has(.curriculum) {
+main.legacy:has(.curriculum) {
   max-width: 48rem;
 }
-.session .subject {
+:where(.legacy) .session .subject {
   margin: 1rem 0 0;
-  color: #666;
+  color: var(--muted);
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.transcript {
+:where(.legacy) .transcript {
   list-style: none;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
-.transcript li {
+:where(.legacy) .transcript li {
   padding: 0.75rem 1rem;
   border-radius: 8px;
   white-space: pre-wrap;
   line-height: 1.5;
 }
-.transcript .tutor {
-  background: #fff;
-  border: 1px solid #ddd;
+:where(.legacy) .transcript .tutor {
+  background: var(--card);
+  border: 1px solid var(--line);
 }
-.transcript .learner {
-  background: #e8f0fe;
+:where(.legacy) .transcript .learner {
+  background: var(--paper);
   align-self: flex-end;
   max-width: 85%;
 }
-.transcript .speaker {
+:where(.legacy) .transcript .speaker {
   display: block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #666;
+  color: var(--muted);
   margin-bottom: 0.25rem;
 }
-.transcript .katex-display {
+:where(.legacy) .transcript .katex-display {
   white-space: normal;
 }
-textarea {
+:where(.legacy) textarea {
   font: inherit;
   padding: 0.5rem;
 }
-main:has(.session) {
+main.legacy:has(.session) {
   max-width: 40rem;
 }
-.quiz .prompt {
+:where(.legacy) .quiz .prompt {
   font-size: 1.125rem;
   line-height: 1.5;
   margin: 0.5rem 0 1rem;
 }
-.quiz .choices {
+:where(.legacy) .quiz .choices {
   border: none;
   padding: 0;
   margin: 0 0 1rem;
@@ -172,26 +144,26 @@ main:has(.session) {
   flex-direction: column;
   gap: 0.5rem;
 }
-.quiz .choice {
+:where(.legacy) .quiz .choice {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--line);
   border-radius: 6px;
   cursor: pointer;
 }
-.quiz .feedback {
+:where(.legacy) .quiz .feedback {
   padding: 0.5rem 1rem;
   border-radius: 6px;
 }
-.quiz .feedback.right {
-  background: #e6f4ea;
+:where(.legacy) .quiz .feedback.right {
+  background: var(--green-soft);
 }
-.quiz .feedback.wrong {
-  background: #fdecea;
+:where(.legacy) .quiz .feedback.wrong {
+  background: var(--warm-soft);
 }
-.quiz .score {
+:where(.legacy) .quiz .score {
   font-size: 1.25rem;
   font-weight: 600;
 }
