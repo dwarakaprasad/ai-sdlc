@@ -242,3 +242,31 @@
     display: none;
   }
 }
+
+/* Confetti: falls twice, then fades away. Under reduced motion the pieces stay put, a still sprinkle. */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.confetti i {
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  animation: confetti-fall linear 2 both;
+}
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    translate: 0 -60vh;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 30px 70vh;
+  }
+}

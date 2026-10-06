@@ -232,7 +232,7 @@ function saveAnswer(
     at,
   }: { session: SessionRow; goal: GoalRow; content: GoalContent; attempt: AttemptRow; question: QuestionRow; answer: string; grade: Grade; at: Date },
 ): AnswerResult | undefined {
-  const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey };
+  const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey, objective: question.objective };
   return db.transaction((tx) => {
     const { changes } = tx
       .update(quizQuestions)
@@ -265,6 +265,7 @@ function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): Tutor
     kind: lesson.kind,
     subjectName: lesson.subjectName,
     title: lesson.title,
+    learningObjectives: lesson.learningObjectives,
     step: session.step,
     messages: transcriptOf(db, session.id),
     ...(attempt && { quiz: toQuizAttempt(attempt, questionsOf(db, attempt.id), teachingSettings(db).maxQuizAttempts) }),
@@ -309,7 +310,13 @@ function toQuizAttempt(attempt: AttemptRow, questions: QuestionRow[], maxAttempt
       prompt: q.prompt,
       choices: q.choices,
       ...(q.answer !== null && {
-        answered: { answer: q.answer, correct: q.correct === true, explanation: q.feedback ?? q.explanation, correctAnswer: q.answerKey },
+        answered: {
+          answer: q.answer,
+          correct: q.correct === true,
+          explanation: q.feedback ?? q.explanation,
+          correctAnswer: q.answerKey,
+          objective: q.objective,
+        },
       }),
     })),
     ...(attempt.correct !== null && { score: { correct: attempt.correct, total: questions.length, passed: attempt.passed === true } }),

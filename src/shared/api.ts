@@ -146,8 +146,11 @@ export type SessionMessage = { role: MessageRole; content: string };
 export const QUESTION_TYPES = ["multiple-choice", "number", "short-answer"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
-/** Right or wrong, with a one-line explanation and the answer key, shown straight after an answer. */
-export type AnswerFeedback = { correct: boolean; explanation: string; correctAnswer: string };
+/**
+ * Right or wrong, with a one-line explanation and the answer key, shown straight after an answer; and the Learning Objective
+ * the question tested, so a failed attempt's score can name what was missed.
+ */
+export type AnswerFeedback = { correct: boolean; explanation: string; correctAnswer: string; objective: string };
 
 /** A Quiz question as the Learner sees it. The answer key is only part of the feedback, once it's answered. */
 export type QuizQuestion = {
@@ -175,6 +178,8 @@ export type TutorSession = {
   kind: GoalKind;
   subjectName: string;
   title: string;
+  /** What the Lesson (or every Lesson of a Unit Test's Unit) teaches, for the Learner to see beside the conversation. */
+  learningObjectives: string[];
   step: SessionStep;
   messages: SessionMessage[];
   quiz?: QuizAttempt;

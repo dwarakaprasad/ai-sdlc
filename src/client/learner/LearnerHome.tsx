@@ -16,7 +16,10 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
   useEffect(loadCards, []);
 
   // A Session may have changed the Goals (a Flagged Goal leaves the list), so reload them on the way back.
-  if (openGoal !== undefined) return <SessionChat goalId={openGoal} onBack={() => (setOpenGoal(undefined), loadCards())} />;
+  if (openGoal !== undefined) {
+    // Keyed by the Goal, so moving straight on to the Up next Goal starts its Session afresh.
+    return <SessionChat key={openGoal} goalId={openGoal} onBack={() => (setOpenGoal(undefined), loadCards())} onOpenGoal={setOpenGoal} />;
+  }
   // The cards come earliest Target Date first, so the first is the one to continue (an overdue Goal comes first).
   const [next, ...others] = cards ?? [];
   return (

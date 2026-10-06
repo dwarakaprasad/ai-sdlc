@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from "react";
-import type { QuizAttempt, TutorSession } from "../../shared/api";
+import type { QuizAttempt, QuizQuestion, TutorSession } from "../../shared/api";
 import { api } from "../api";
+import { ArrowIcon, CheckIcon, CloseIcon, SparkleIcon } from "../components/icons";
 import { MathText } from "../components/MathText";
+import { TutorMark } from "../components/TutorMark";
+import { Button, Card } from "../components/ui";
 import { text } from "../text";
 
-/** Starts the next Quiz attempt; the Tutor writes the questions first. */
+/** Starts the next Quiz attempt from the foot of the conversation; the Tutor writes the questions first. */
 export function QuizStart({ session, onStarted, onChanged }: { session: TutorSession; onStarted: (s: TutorSession) => void; onChanged: () => void }) {
   const [writing, setWriting] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -23,47 +26,88 @@ export function QuizStart({ session, onStarted, onChanged }: { session: TutorSes
     setFailed(true);
   }
 
-  if (writing) return <p className="hint" aria-live="polite">{text.quiz.writing}</p>;
-  if (stopped) return <p className="hint">{stopped}</p>;
   return (
-    <div className="quiz">
-      {failed && <p className="error">{text.quiz.failed}</p>}
-      <button type="button" onClick={() => void start()}>
-        {failed ? text.session.retry : session.quiz ? text.quiz.startAgain : text.quiz.start}
-      </button>
-    </div>
+    <footer className="quiz-start" aria-live="polite">
+      <TutorMark size={40} mood={writing ? "thinking" : stopped ? "resting" : "happy"} />
+      <div className="quiz-start-text">
+        {writing ? (
+          <strong>{text.quiz.writing}</strong>
+        ) : stopped ? (
+          <span>{stopped}</span>
+        ) : (
+          <>
+            <strong>{text.session.quizReady[session.kind]}</strong>
+            {failed ? <span className="text-warm">{text.quiz.failed}</span> : <span className="muted">{text.session.quizReadyHint[session.kind]}</span>}
+          </>
+        )}
+      </div>
+      {!writing && !stopped && (
+        <Button onClick={() => void start()}>
+          {failed ? text.session.retry : session.quiz ? text.quiz.startAgain : text.quiz.start} <ArrowIcon size={18} />
+        </Button>
+      )}
+    </footer>
+  );
+}
+
+/** The bar over a Quiz: a way out, what is being taken, and (while answering) one segment per question coloured by result. */
+function QuizTop({ session, quiz, onLeave, segments = true }: { session: TutorSession; quiz: QuizAttempt; onLeave: () => void; segments?: boolean }) {
+  const right = quiz.questions.filter((q) => q.answered?.correct).length;
+  const wrong = quiz.questions.filter((q) => q.answered && !q.answered.correct).length;
+  const current = quiz.questions.findIndex((q) => !q.answered);
+  return (
+    <header className="quiz-top">
+      <Button kind="quiet" onClick={onLeave}>
+        <CloseIcon size={18} /> {text.session.leave}
+      </Button>
+      <span className="muted quiz-top-title">
+        {text.quiz.heading[session.kind]} · {text.goalTitle(session.kind, session.title)}
+        {session.kind === "lesson" && ` · ${text.quiz.attempt(quiz.number, quiz.maxAttempts)}`}
+      </span>
+      {segments && (
+        <span className="quiz-segments" role="img" aria-label={text.quiz.progress(right, wrong, quiz.questions.length)}>
+          {quiz.questions.map((q, i) => (
+            <span key={q.id} className={q.answered ? (q.answered.correct ? "right" : "wrong") : i === current ? "now" : ""} />
+          ))}
+        </span>
+      )}
+    </header>
   );
 }
 
 /**
- * A Quiz attempt, one question at a time: right or wrong with a one-line explanation after each answer,
- * then the score and what comes next. Resuming starts at the first unanswered question.
+ * A Quiz attempt, one question per card: the answer, Check, then right or wrong inline with its one-line explanation,
+ * and Continue. Resuming starts at the first unanswered question.
  */
-export function QuizPanel({
+export function QuizScreen({
   session,
   quiz,
+  reviewing,
   onAnswered,
+  onNext,
   onChanged,
-  onContinue,
+  onLeave,
 }: {
   session: TutorSession;
   quiz: QuizAttempt;
-  onAnswered: (s: TutorSession) => void;
+  /** The question just answered, whose feedback shows until the Learner moves on. */
+  reviewing: number | undefined;
+  onAnswered: (s: TutorSession, questionId: number) => void;
+  onNext: () => void;
   onChanged: () => void;
-  onContinue: () => void;
+  onLeave: () => void;
 }) {
   const [draft, setDraft] = useState("");
-  /** The question just answered, whose feedback shows until the Learner moves on. */
-  const [reviewing, setReviewing] = useState<number>();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string>();
 
   const index = reviewing !== undefined ? quiz.questions.findIndex((q) => q.id === reviewing) : quiz.questions.findIndex((q) => !q.answered);
   const question = quiz.questions[index];
+  if (!question) return null;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!question || draft.trim() === "") return;
+    if (!question || draft.trim() === "" || checking) return;
     setChecking(true);
     setError(undefined);
     const result = await api.answer(session.id, question.id, draft.trim()).catch(() => ({ error: "llmFailed" }));
@@ -73,95 +117,181 @@ export function QuizPanel({
       return setError(text.quiz.errors[result.error] ?? text.quiz.failed);
     }
     const answered = { ...question, answered: { answer: draft.trim(), ...result.feedback } };
-    onAnswered({
-      ...session,
-      step: result.step,
-      quiz: { ...quiz, score: result.score, questions: quiz.questions.map((q) => (q.id === question.id ? answered : q)) },
-    });
-    setReviewing(question.id);
+    onAnswered(
+      {
+        ...session,
+        step: result.step,
+        quiz: { ...quiz, score: result.score, questions: quiz.questions.map((q) => (q.id === question.id ? answered : q)) },
+      },
+      question.id,
+    );
     setDraft("");
   }
 
-  const heading = (
-    <h2>
-      {text.quiz.heading[session.kind]}
-      {quiz.number > 1 && <span className="hint"> · {text.quiz.attempt(quiz.number, quiz.maxAttempts)}</span>}
-    </h2>
-  );
-
-  if (!question && quiz.score) {
-    return (
-      <div className="quiz card" aria-live="polite">
-        {heading}
-        <p className="score">{text.quiz.score(quiz.score.correct, quiz.score.total)}</p>
-        {session.step === "goal-met" && <p>{text.quiz.met[session.kind]}</p>}
-        {session.step === "ended" && <p className="hint">{text.quiz.ended}</p>}
-        {session.step === "re-teaching" && (
-          <>
-            <p>{text.quiz.reTeach}</p>
-            <button type="button" onClick={onContinue}>
-              {text.quiz.continue}
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
-  if (!question) return null;
-
   const feedback = question.answered;
   return (
-    <div className="quiz card">
-      {heading}
-      <p className="hint">{text.quiz.question(index + 1, quiz.questions.length)}</p>
-      <div className="prompt">
-        <MathText text={question.prompt} />
-      </div>
-      {feedback ? (
-        <div className={feedback.correct ? "feedback right" : "feedback wrong"} aria-live="polite">
-          <p>
-            <strong>{feedback.correct ? text.quiz.right : text.quiz.wrong}</strong> <MathText text={feedback.explanation} />
+    <div className="quiz-app screen-enter">
+      <QuizTop session={session} quiz={quiz} onLeave={onLeave} />
+      <form className="quiz-card" onSubmit={feedback ? (e) => (e.preventDefault(), onNext()) : submit}>
+        <span className="eyebrow">{text.quiz.question(index + 1, quiz.questions.length)}</span>
+        <h1 className="quiz-prompt">
+          <MathText text={question.prompt} />
+        </h1>
+        <Answer key={question.id} question={question} draft={draft} onDraft={setDraft} />
+        {feedback && (
+          <div className={`quiz-feedback ${feedback.correct ? "right" : "wrong"}`} aria-live="polite">
+            <span className="quiz-feedback-mark" aria-hidden>
+              {feedback.correct ? <CheckIcon size={18} /> : <SparkleIcon size={18} />}
+            </span>
+            <div>
+              <strong>{feedback.correct ? text.quiz.right : text.quiz.wrong}</strong> <MathText text={feedback.explanation} />
+              {!feedback.correct && (
+                <div className="quiz-feedback-answer">
+                  <MathText text={text.quiz.correctAnswer(feedback.correctAnswer)} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        {error && <p className="text-warm">{error}</p>}
+        <footer className="quiz-foot">
+          {feedback ? (
+            <Button type="submit" autoFocus>
+              {text.quiz.next} <ArrowIcon size={18} />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={checking || draft.trim() === ""}>
+              {checking ? text.quiz.checking : text.quiz.submit}
+            </Button>
+          )}
+        </footer>
+      </form>
+    </div>
+  );
+}
+
+/** The answer to one question: large option rows, a large number field, or a roomy box for a written answer. Locked once answered. */
+function Answer({ question, draft, onDraft }: { question: QuizQuestion; draft: string; onDraft: (value: string) => void }) {
+  const answered = question.answered;
+  if (question.type === "multiple-choice") {
+    return (
+      <fieldset className="quiz-options" disabled={!!answered}>
+        <legend className="visually-hidden">{text.quiz.choicesLabel}</legend>
+        {question.choices.map((choice) => {
+          const picked = answered ? answered.answer === choice : draft === choice;
+          // Once answered, the right choice and the Learner's pick are marked, and the rest fade back.
+          const state = answered ? (choice === answered.correctAnswer ? "right" : picked ? "wrong" : "dim") : picked ? "picked" : "";
+          return (
+            <label key={choice} className={`quiz-option ${state}`}>
+              <input type="radio" name={`q${question.id}`} value={choice} checked={picked} onChange={() => onDraft(choice)} />
+              <span className="quiz-radio" aria-hidden />
+              <MathText text={choice} />
+              {state === "right" && <span className="visually-hidden"> {text.quiz.rightChoice}</span>}
+            </label>
+          );
+        })}
+      </fieldset>
+    );
+  }
+  if (question.type === "number") {
+    return (
+      <label className="quiz-number">
+        <span className="eyebrow">{text.quiz.numberLabel}</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          autoFocus
+          placeholder="0"
+          readOnly={!!answered}
+          value={answered ? answered.answer : draft}
+          onChange={(e) => onDraft(e.target.value)}
+        />
+        <span className="muted quiz-hint">{text.quiz.numberHint}</span>
+      </label>
+    );
+  }
+  return (
+    <label className="quiz-written">
+      <span className="eyebrow">{text.quiz.writtenLabel}</span>
+      <textarea
+        rows={4}
+        autoFocus
+        placeholder={text.quiz.writtenPlaceholder}
+        readOnly={!!answered}
+        value={answered ? answered.answer : draft}
+        onChange={(e) => onDraft(e.target.value)}
+      />
+    </label>
+  );
+}
+
+/** Each Learning Objective a finished attempt got wrong at least once, in the order the questions asked them. */
+function missedObjectives(quiz: QuizAttempt): string[] {
+  return [...new Set(quiz.questions.flatMap((q) => (q.answered && !q.answered.correct ? [q.answered.objective] : [])))];
+}
+
+/**
+ * A finished attempt that didn't pass: the score, each question marked right or not quite, and what comes next. After a
+ * failed attempt that's going over the missed Learning Objectives with the Tutor; after the last one allowed, the Parent helps.
+ */
+export function QuizScore({ session, quiz, onLeave, onGoOver }: { session: TutorSession; quiz: QuizAttempt; onLeave: () => void; onGoOver: () => void }) {
+  const score = quiz.score!;
+  const missed = missedObjectives(quiz);
+  return (
+    <div className="quiz-app screen-enter">
+      <QuizTop session={session} quiz={quiz} onLeave={onLeave} segments={false} />
+      <main className="quiz-score">
+        <section>
+          <span className="eyebrow">{text.quiz.attempt(quiz.number, quiz.maxAttempts)}</span>
+          <p className="quiz-score-number" aria-label={text.quiz.score(score.correct, score.total)}>
+            {score.correct}
+            <span>/{score.total}</span>
           </p>
-          {!feedback.correct && (
-            <p className="hint">
-              <MathText text={text.quiz.correctAnswer(feedback.correctAnswer)} />
-            </p>
+          <ol className="quiz-score-list">
+            {quiz.questions.map((q) => (
+              <li key={q.id} className={q.answered?.correct ? "right" : "wrong"}>
+                <span className="quiz-score-mark" aria-hidden>
+                  {q.answered?.correct ? <CheckIcon size={14} /> : <CloseIcon size={14} />}
+                </span>
+                <span>
+                  <span className="visually-hidden">{q.answered?.correct ? text.quiz.markedRight : text.quiz.markedWrong} </span>
+                  <MathText text={q.prompt} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <Card className="quiz-score-next">
+          {session.step === "ended" ? (
+            <>
+              <TutorMark size={56} mood="resting" />
+              <h1 className="h2">{text.quiz.ended}</h1>
+              <div>
+                <Button onClick={onLeave}>{text.session.back}</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <TutorMark size={56} />
+              <h1 className="h2">{text.quiz.reTeachHeading}</h1>
+              <ul className="missed-objectives">
+                {missed.map((objective) => (
+                  <li key={objective}>
+                    <ArrowIcon size={16} /> {objective}
+                  </li>
+                ))}
+              </ul>
+              <p className="muted">{text.quiz.reTeachHint}</p>
+              <div>
+                <Button onClick={onGoOver}>
+                  {text.quiz.goOver} <ArrowIcon size={18} />
+                </Button>
+              </div>
+            </>
           )}
-          <button type="button" onClick={() => setReviewing(undefined)}>
-            {quiz.score ? text.quiz.seeScore : text.quiz.next}
-          </button>
-        </div>
-      ) : (
-        <form className="answer" onSubmit={submit}>
-          {question.type === "multiple-choice" && (
-            <fieldset className="choices">
-              {question.choices.map((choice) => (
-                <label key={choice} className="choice">
-                  <input type="radio" name={`q${question.id}`} value={choice} checked={draft === choice} onChange={() => setDraft(choice)} />
-                  <MathText text={choice} />
-                </label>
-              ))}
-            </fieldset>
-          )}
-          {question.type === "number" && (
-            <label>
-              {text.quiz.numberLabel}
-              <input type="text" inputMode="decimal" autoComplete="off" value={draft} onChange={(e) => setDraft(e.target.value)} />
-              <span className="hint">{text.quiz.numberHint}</span>
-            </label>
-          )}
-          {question.type === "short-answer" && (
-            <label>
-              {text.quiz.writtenLabel}
-              <textarea rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} />
-            </label>
-          )}
-          {error && <p className="error">{error}</p>}
-          <button type="submit" disabled={checking || draft.trim() === ""}>
-            {checking ? text.quiz.checking : text.quiz.submit}
-          </button>
-        </form>
-      )}
+        </Card>
+      </main>
     </div>
   );
 }

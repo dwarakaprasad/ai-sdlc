@@ -27,6 +27,13 @@
   --lilac: #7b5cc4;
   --lilac-soft: #f2eefb;
   --shape: rgba(22, 24, 29, 0.15);
+  --line-strong: #cfccc2;
+  --line-hover: #bdbab0;
+  --green-ink: #145c34;
+  --warm-ink: #8a3a12;
+  --on-ink-muted: #a5a8b3;
+  --yellow-edge: #c9a21f;
+  --lift: 0 12px 40px rgba(22, 24, 29, 0.05);
 
   /* Spacing */
   --s-1: 4px;
