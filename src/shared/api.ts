@@ -12,17 +12,51 @@ export type CurriculumSummary =
     })
   | { id: string; valid: false; errors: CurriculumError[] };
 
-/** A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. */
-export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean };
+/** The pictures a Learner can pick as their Avatar (see CONTEXT.md); the app ships a drawing for each. */
+export const AVATARS = [
+  "fox",
+  "owl",
+  "cat",
+  "panda",
+  "frog",
+  "whale",
+  "penguin",
+  "turtle",
+  "rocket",
+  "planet",
+  "bolt",
+  "mountain",
+  "cactus",
+  "guitar",
+  "controller",
+  "leaf",
+] as const;
+export type AvatarId = (typeof AVATARS)[number];
 
-/** Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it. */
-export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null };
+/** The accent colours a Learner's Avatar sits on, in palette order: each new Learner gets the one after the last Learner's. */
+export const ACCENT_COLORS = ["coral", "amber", "sun", "mint", "sky", "indigo", "violet", "pink"] as const;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+
+/** A Learner's Avatar and its colour; no picture until the Learner's first pick. */
+export type AvatarChoice = { avatar: AvatarId | null; color: AccentColor };
+
+/** A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. */
+export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean } & AvatarChoice;
+
+/**
+ * Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it;
+ * an absent `avatar` or `color` keeps it (a new Learner gets no Avatar and the next colour), and a `null` Avatar clears it.
+ */
+export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null; avatar?: AvatarId | null; color?: AccentColor };
 
 /** One profile on the Learner login screen (GET /api/learner/profiles). */
-export type LearnerProfile = { id: number; name: string; hasPin: boolean };
+export type LearnerProfile = { id: number; name: string; hasPin: boolean } & AvatarChoice;
 
-/** The logged-in Learner (GET /api/learner/me). */
-export type LoggedInLearner = { id: number; name: string };
+/** The logged-in Learner (GET /api/learner/me, and PUT /api/learner/me/avatar, whose body is `{ avatar, color }`, both required). */
+export type LoggedInLearner = { id: number; name: string } & AvatarChoice;
+
+export const isAvatarId = (value: unknown): value is AvatarId => AVATARS.includes(value as AvatarId);
+export const isAccentColor = (value: unknown): value is AccentColor => ACCENT_COLORS.includes(value as AccentColor);
 
 /** GET and PUT /api/parent/settings/llm: which provider and model the Tutor uses. The API key is never part of it. */
 export type LlmSettings = { provider: ProviderId; model: string };

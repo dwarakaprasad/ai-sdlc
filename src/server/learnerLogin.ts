@@ -1,10 +1,12 @@
 import { Hono } from "hono";
-import type { LearnerProfile, LoggedInLearner } from "../shared/api";
+import { isAccentColor, isAvatarId, type LearnerProfile, type LoggedInLearner } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { endLogin, requireRole, startLogin, verifyPassword } from "./auth";
 import { currentGoals } from "./goals";
 import { readJsonObject } from "./http";
-import { allLearners, findLearner, hasPin, loggedInLearner } from "./learners";
+import { eq } from "drizzle-orm";
+import { learners } from "./db/schema";
+import { allLearners, avatarOf, findLearner, hasPin, loggedInLearner, type LearnerRow } from "./learners";
 import { learnerSessionRoutes } from "./sessions";
 
 /** The Learner login screen and the logged-in Learner's own routes. */
@@ -16,8 +18,17 @@ export function learnerRoutes(deps: AppDeps) {
     .get("/me", (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      const me: LoggedInLearner = { id: learner.id, name: learner.name };
-      return c.json(me);
+      return c.json(toLoggedInLearner(learner));
+    })
+    // The Learner's own pick of Avatar and colour, first asked for at their first login.
+    .put("/me/avatar", async (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const { avatar, color } = (await readJsonObject(c)) ?? {};
+      if (!isAvatarId(avatar)) return c.json({ error: "unknownAvatar" }, 400);
+      if (!isAccentColor(color)) return c.json({ error: "unknownColor" }, 400);
+      const row = db.update(learners).set({ avatar, color }).where(eq(learners.id, learner.id)).returning().get()!;
+      return c.json(toLoggedInLearner(row));
     })
     .get("/goals", (c) => {
       const learner = loggedInLearner(db, c);
@@ -28,7 +39,9 @@ export function learnerRoutes(deps: AppDeps) {
 
   return new Hono()
     .get("/profiles", (c) =>
-      c.json(allLearners(db).map((learner): LearnerProfile => ({ id: learner.id, name: learner.name, hasPin: hasPin(learner) }))),
+      c.json(
+        allLearners(db).map((learner): LearnerProfile => ({ id: learner.id, name: learner.name, hasPin: hasPin(learner), ...avatarOf(learner) })),
+      ),
     )
     .post("/login", async (c) => {
       const { learnerId, pin } = (await readJsonObject(c)) ?? {};
@@ -45,4 +58,8 @@ export function learnerRoutes(deps: AppDeps) {
       return c.body(null, 204);
     })
     .route("/", protectedRoutes);
+}
+
+function toLoggedInLearner(learner: LearnerRow): LoggedInLearner {
+  return { id: learner.id, name: learner.name, ...avatarOf(learner) };
 }

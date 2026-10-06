@@ -20,8 +20,8 @@ describe("Learner login", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([
-      { id: ada, name: "Ada", hasPin: true },
-      { id: ben, name: "Ben", hasPin: false },
+      { id: ada, name: "Ada", hasPin: true, avatar: null, color: "coral" },
+      { id: ben, name: "Ben", hasPin: false, avatar: null, color: "amber" },
     ]);
   });
 
@@ -32,7 +32,7 @@ describe("Learner login", () => {
     const res = await learner("/api/learner/login", { learnerId: ben });
 
     expect(res.status).toBe(204);
-    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ben, name: "Ben" });
+    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ben, name: "Ben", avatar: null, color: "amber" });
   });
 
   it("logs a Learner in with the right PIN", async () => {
@@ -42,7 +42,7 @@ describe("Learner login", () => {
     const res = await learner("/api/learner/login", { learnerId: ada, pin: "1234" });
 
     expect(res.status).toBe(204);
-    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ada, name: "Ada" });
+    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ada, name: "Ada", avatar: null, color: "coral" });
   });
 
   it.each([
@@ -114,7 +114,7 @@ describe("Role separation", () => {
 
     expect(res.status).toBe(403);
     expect(await res.json()).toEqual({ error: "forbidden" });
-    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ben, name: "Ben" });
+    expect(await (await learner("/api/learner/me")).json()).toEqual({ id: ben, name: "Ben", avatar: null, color: "amber" });
   });
 
   it("forbids the Parent from the Learner's own routes", async () => {

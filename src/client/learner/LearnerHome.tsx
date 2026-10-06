@@ -4,7 +4,8 @@ import { api } from "../api";
 import { ArrowIcon, ClockIcon } from "../components/icons";
 import { TopBar } from "../components/TopBar";
 import { TutorMark } from "../components/TutorMark";
-import { Button, Card, Initial, Tag } from "../components/ui";
+import { Avatar } from "../components/Avatar";
+import { Button, Card, Tag } from "../components/ui";
 import { text } from "../text";
 import { SessionChat } from "./SessionChat";
 
@@ -28,7 +29,7 @@ export function LearnerHome({ learner, onLogout }: { learner: LoggedInLearner; o
         nav={[{ label: text.learnerNav.today, current: true, onSelect: loadCards }]}
         end={
           <button type="button" className="switch-profile" aria-label={text.learnerNav.switchProfile} onClick={() => api.logoutLearner().then(onLogout)}>
-            <Initial name={learner.name} size={36} />
+            <Avatar {...learner} size={36} />
           </button>
         }
       />

@@ -28,7 +28,7 @@ describe("Learners in the Parent area", () => {
 
     expect(res.status).toBe(201);
     const created = await res.json();
-    expect(created).toEqual({ id: expect.any(Number), ...ada, hasPin: true });
+    expect(created).toEqual({ id: expect.any(Number), ...ada, hasPin: true, avatar: null, color: "coral" });
     expect(await (await parent("/api/parent/learners")).json()).toEqual([created]);
   });
 
@@ -58,7 +58,7 @@ describe("Learners in the Parent area", () => {
     const res = await parent(`/api/parent/learners/${id}`, { name: "Ada L.", grade: "7", curriculumId: "grade-6" }, "PUT");
 
     expect(res.status).toBe(200);
-    const edited = { id, name: "Ada L.", grade: "7", curriculumId: "grade-6", hasPin: true };
+    const edited = { id, name: "Ada L.", grade: "7", curriculumId: "grade-6", hasPin: true, avatar: null, color: "coral" };
     expect(await res.json()).toEqual(edited);
     expect(await (await parent("/api/parent/learners")).json()).toEqual([edited]);
   });

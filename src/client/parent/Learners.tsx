@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { PIN_PATTERN } from "../../shared/auth";
-import type { CurriculumSummary, Learner, LearnerInput } from "../../shared/api";
+import { ACCENT_COLORS, AVATARS, isAccentColor, isAvatarId, type AccentColor, type AvatarId, type CurriculumSummary, type Learner, type LearnerInput } from "../../shared/api";
+import { Avatar } from "../components/Avatar";
 import { api } from "../api";
 import { text } from "../text";
 import { Goals } from "./Goals";
@@ -44,7 +45,9 @@ export function Learners() {
           />
         ) : (
           <article key={learner.id} className="card">
-            <h3>{learner.name}</h3>
+            <h3 className="learner-heading">
+              <Avatar {...learner} size={36} /> {learner.name}
+            </h3>
             <p className="hint">{text.learners.details(learner.grade, learner.curriculumId, learner.hasPin)}</p>
             <Goals learner={learner} />
             <Progress learner={learner} />
@@ -88,13 +91,16 @@ function LearnerForm({
   const [curriculumId, setCurriculumId] = useState(learner?.curriculumId ?? options[0] ?? "");
   const [pin, setPin] = useState("");
   const [removePin, setRemovePin] = useState(false);
+  const [avatar, setAvatar] = useState<AvatarId | null>(learner?.avatar ?? null);
+  const [color, setColor] = useState<AccentColor | undefined>(learner?.color);
   const [error, setError] = useState<string>();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (pin !== "" && !PIN_PATTERN.test(pin)) return setError(text.learners.errors.invalidPin);
     // On edit, an empty PIN field keeps the current PIN.
-    const input: LearnerInput = { name, grade, curriculumId, pin: removePin ? null : pin === "" ? undefined : pin };
+    // A new Learner gets the next colour in line and picks their own Avatar at their first login.
+    const input: LearnerInput = { name, grade, curriculumId, pin: removePin ? null : pin === "" ? undefined : pin, ...(learner && { avatar, color }) };
     const res = learner ? await api.editLearner(learner.id, input) : await api.createLearner(input);
     if (res.ok) {
       if (!learner) (setName(""), setGrade(""), setPin(""));
@@ -143,6 +149,31 @@ function LearnerForm({
           <input type="checkbox" checked={removePin} onChange={(e) => setRemovePin(e.target.checked)} />
           {text.learners.removePin}
         </label>
+      )}
+      {learner && (
+        <>
+          <label>
+            {text.learners.avatarLabel}
+            <select value={avatar ?? ""} onChange={(e) => setAvatar(isAvatarId(e.target.value) ? e.target.value : null)}>
+              <option value="">{text.learners.noAvatar}</option>
+              {AVATARS.map((id) => (
+                <option key={id} value={id}>
+                  {text.avatars[id]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {text.learners.colorLabel}
+            <select value={color} onChange={(e) => isAccentColor(e.target.value) && setColor(e.target.value)}>
+              {ACCENT_COLORS.map((c) => (
+                <option key={c} value={c}>
+                  {text.colors[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
       )}
       {error && <p className="error">{error}</p>}
       <div className="actions">

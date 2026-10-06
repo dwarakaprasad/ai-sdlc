@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { LoggedInLearner, ParentStatus } from "../shared/api";
 import { api } from "./api";
+import { AvatarPick } from "./learner/AvatarPick";
 import { LearnerHome } from "./learner/LearnerHome";
 import { LearnerLogin } from "./learner/LearnerLogin";
 import { LoginForm } from "./parent/LoginForm";
@@ -31,6 +32,8 @@ export function App() {
   let content;
   if (error) content = <p className="error">{error}</p>;
   else if (!state) content = <p>{text.loading}</p>;
+  // A Learner picks their Avatar at their first login, before their first Today.
+  else if (state.learner?.avatar === null) return <AvatarPick learner={state.learner} onDone={(learner) => setState({ learner })} />;
   else if (state.learner) return <LearnerHome learner={state.learner} onLogout={refresh} />;
   else if (!state.parent.passwordSet) content = <SetupForm onDone={refresh} />;
   else if (state.parent.loggedIn) content = <ParentArea onLogout={refresh} />;
