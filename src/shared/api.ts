@@ -112,8 +112,11 @@ export type SessionSummary = {
   attempts: ({ number: number } & QuizScore)[];
 };
 
-/** One Goal in the progress view (GET /api/parent/learners/:id/progress): the Goal, with its Sessions oldest first. */
+/** One Goal in the progress view: the Goal, with its Sessions oldest first. */
 export type GoalProgress = Goal & { sessions: SessionSummary[] };
+
+/** A Learner's progress for the Parent (GET /api/parent/learners/:id/progress): the length of their Streak, and each Goal's progress. */
+export type LearnerProgress = { streak: number; goals: GoalProgress[] };
 
 /** A Quiz question as the Parent reads it in a transcript: with its answer key, and the Learner's answer once given. */
 export type TranscriptQuestion = {

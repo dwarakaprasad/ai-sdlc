@@ -20,17 +20,20 @@ const pinDigits =`${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 const DAILY_LIMIT = "That's enough for today! You've worked really hard. Come back tomorrow to carry on.";
 const LESSON_UNAVAILABLE = "This Lesson can't be taught just now. Ask your Parent to check the Curriculum in the Parent area.";
 
-/** A YYYY-MM-DD date as e.g. "Tue, Oct 20". Read as a local day so it never shifts across time zones. */
-function formatDate(date: string): string {
+/** A YYYY-MM-DD date read as a local day, so it never shifts across time zones. */
+function localDay(date: string): Date {
   const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return new Date(year!, month! - 1, day);
 }
 
-/** A YYYY-MM-DD date's weekday, e.g. "Tuesday"; a local day, like formatDate. */
-function weekday(date: string): string {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "long" });
-}
+/** A YYYY-MM-DD date as e.g. "Tue, Oct 20". */
+const formatDate = (date: string) => localDay(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+/** A YYYY-MM-DD date's weekday, e.g. "Tuesday". */
+const weekday = (date: string) => localDay(date).toLocaleDateString("en-US", { weekday: "long" });
+
+/** A Streak's length, e.g. "1 day" or "6 days". */
+const streakDays = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;
 
 /**
  * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
@@ -151,8 +154,8 @@ export const text = {
   /** Never a lost-streak message: at 0 the Learner is invited to start one. */
   streak: {
     heading: "Streak",
-    days: (days: number) => `${days} ${days === 1 ? "day" : "days"}`,
-    chipLabel: (days: number) => `Streak: ${days} ${days === 1 ? "day" : "days"}`,
+    days: streakDays,
+    chipLabel: (days: number) => `Streak: ${streakDays(days)}`,
     startNew: "Start a new streak today",
     weekLabel: "The last seven days",
     weekendNote: "Weekends count, but never break it.",

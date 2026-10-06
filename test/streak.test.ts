@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Learner, LearnerToday } from "../src/shared/api";
+import type { Learner, LearnerProgress, LearnerToday } from "../src/shared/api";
 import { household } from "./support/household";
 
 /** One number question, as the Tutor's structured quiz generation returns it. */
@@ -169,12 +169,15 @@ describe("The Streak", () => {
     expect(week[6]).toEqual({ date: "2026-10-06", state: "worked" });
   });
 
-  it("is shown to the Parent for each Learner", async () => {
-    const { workOn, parentStreak, parent } = await streakHousehold();
+  it("is shown to the Parent for each Learner, in the list and in their progress", async () => {
+    const { workOn, parentStreak, parent, ada } = await streakHousehold();
     await workOn("2026-10-05", "2026-10-06");
     const ben = (await (await parent("/api/parent/learners", { name: "Ben", grade: "4", curriculumId: "grade-6" })).json()) as Learner;
+    const progressStreak = async (id: number) => ((await (await parent(`/api/parent/learners/${id}/progress`)).json()) as LearnerProgress).streak;
 
     expect(await parentStreak()).toBe(2);
     expect(ben.streak).toBe(0);
+    expect(await progressStreak(ada)).toBe(2);
+    expect(await progressStreak(ben.id)).toBe(0);
   });
 });
