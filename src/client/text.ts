@@ -1,4 +1,5 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
+import type { LlmErrorKind } from "../shared/llm";
 
 const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 
@@ -71,6 +72,34 @@ export const text = {
       unknownCurriculum: "Choose a valid Curriculum.",
       invalidPin: `A PIN is ${pinDigits}.`,
     } as Record<string, string>,
+  },
+  llmSettings: {
+    heading: "Tutor model",
+    intro: "The Tutor uses your own API key, which you set as an environment variable. It is never stored by Home Tutor.",
+    providerLabel: "Provider",
+    modelLabel: "Model",
+    keyHint: (envVar: string) => `Set your key in the ${envVar} environment variable, then restart Home Tutor.`,
+    save: "Save",
+    saved: "Saved.",
+    test: "Test connection",
+    testing: "Testing…",
+    ok: "Connected. The Tutor is ready.",
+    errors: {
+      modelRequired: "Enter a model.",
+      unknownProvider: "Choose a provider.",
+    } as Record<string, string>,
+    testErrors: {
+      missingKey: (envVar: string) => `No API key found. Set ${envVar} and restart Home Tutor.`,
+      rejectedKey: (envVar: string) => `The provider rejected the key in ${envVar}. Check that it's correct and active.`,
+      unknownModel: (_envVar: string, model: string) => `The provider doesn't recognise the model "${model}". Check its name.`,
+      failed: () => "Couldn't reach the provider. Check your internet connection and try again.",
+    } satisfies Record<LlmErrorKind, (envVar: string, model: string) => string>,
+  },
+  usage: {
+    heading: "Token usage",
+    none: "No tokens used yet.",
+    day: (date: string, calls: number, input: number, output: number) =>
+      `${date}: ${input.toLocaleString()} in, ${output.toLocaleString()} out (${calls} ${calls === 1 ? "call" : "calls"})`,
   },
   curricula: {
     heading: "Curricula",

@@ -5,6 +5,8 @@ import type { AppDeps } from "./deps";
 import { currentRole, endLogin, forbidRole, hashPassword, requireRole, startLogin, verifyPassword } from "./auth";
 import { listCurricula } from "./curricula";
 import { parentLearnerRoutes } from "./learners";
+import { parentSettingsRoutes } from "./settings";
+import { parentUsageRoutes } from "./usage";
 import { parentCredential } from "./db/schema";
 
 export function parentRoutes(deps: AppDeps) {
@@ -15,7 +17,9 @@ export function parentRoutes(deps: AppDeps) {
   const protectedRoutes = new Hono()
     .use(requireRole(db, "parent"))
     .get("/curricula", (c) => c.json(listCurricula(curriculaDir)))
-    .route("/learners", parentLearnerRoutes(deps));
+    .route("/learners", parentLearnerRoutes(deps))
+    .route("/settings", parentSettingsRoutes(deps))
+    .route("/usage", parentUsageRoutes(deps));
 
   // A Learner can't reach any Parent endpoint, not even the login form: they log out first.
   return new Hono()

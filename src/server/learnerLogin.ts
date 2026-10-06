@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { LearnerProfile, LoggedInLearner } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { currentLogin, endLogin, requireRole, startLogin, verifyPassword } from "./auth";
-import { allLearners, findLearner, hasPin, readJsonObject } from "./learners";
+import { readJsonObject } from "./http";
+import { allLearners, findLearner, hasPin } from "./learners";
 
 /** The Learner login screen and the logged-in Learner's own routes. */
 export function learnerRoutes({ db }: AppDeps) {

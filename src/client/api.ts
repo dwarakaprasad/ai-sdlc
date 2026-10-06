@@ -1,4 +1,14 @@
-import type { CurriculumSummary, Learner, LearnerInput, LoggedInLearner, LearnerProfile, ParentStatus } from "../shared/api";
+import type {
+  ConnectionTest,
+  CurriculumSummary,
+  DailyUsage,
+  Learner,
+  LearnerInput,
+  LlmSettings,
+  LoggedInLearner,
+  LearnerProfile,
+  ParentStatus,
+} from "../shared/api";
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(path);
@@ -26,6 +36,10 @@ export const api = {
   createLearner: (input: LearnerInput) => post("/api/parent/learners", input),
   editLearner: (id: number, input: LearnerInput) => send(`/api/parent/learners/${id}`, "PUT", input),
   removeLearner: (id: number) => send(`/api/parent/learners/${id}`, "DELETE"),
+  llmSettings: () => get<LlmSettings>("/api/parent/settings/llm"),
+  saveLlmSettings: (settings: LlmSettings) => send("/api/parent/settings/llm", "PUT", settings),
+  testConnection: async () => (await post("/api/parent/settings/llm/test", {})).json() as Promise<ConnectionTest>,
+  usage: () => get<DailyUsage[]>("/api/parent/usage"),
   learnerProfiles: () => get<LearnerProfile[]>("/api/learner/profiles"),
   /** The logged-in Learner, or undefined when no Learner is logged in. */
   learnerMe: async () => {

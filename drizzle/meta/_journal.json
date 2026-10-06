@@ -15,6 +15,20 @@
       "when": 1791251171883,
       "tag": "0001_learners",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791252139387,
+      "tag": "0002_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1791252213000,
+      "tag": "0003_llm_usage",
+      "breakpoints": true
     }
   ]
 }

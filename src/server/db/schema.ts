@@ -30,3 +30,22 @@ export const learners = sqliteTable("learners", {
   /** Hashed like the Parent password; null when the Learner has no PIN. */
   pinHash: text("pin_hash"),
 });
+
+/** The Parent's settings; at most one row (id = 1), and defaults apply until the Parent saves. No API key is ever stored (ADR 0002). */
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey(),
+  llmProvider: text("llm_provider").notNull(),
+  llmModel: text("llm_model").notNull(),
+});
+
+/** Tokens used by one LLM call, dated by the server's local day so daily totals match the household's day. */
+export const llmUsage = sqliteTable("llm_usage", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  /** YYYY-MM-DD. */
+  date: text("date").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  inputTokens: integer("input_tokens").notNull(),
+  outputTokens: integer("output_tokens").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});

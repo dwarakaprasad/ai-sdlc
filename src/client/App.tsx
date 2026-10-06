@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { MIN_PASSWORD_LENGTH, PIN_PATTERN } from "../shared/auth";
-import type { CurriculumSummary, Learner, LearnerInput, LoggedInLearner, LearnerProfile, ParentStatus } from "../shared/api";
+import type { CurriculumSummary, DailyUsage, Learner, LearnerInput, LlmSettings, LoggedInLearner, LearnerProfile, ParentStatus } from "../shared/api";
+import { PROVIDERS, isProviderId, providerInfo } from "../shared/llm";
 import { api } from "./api";
 import { text } from "./text";
 
@@ -101,6 +102,8 @@ function ParentArea({ onLogout }: { onLogout: () => void }) {
       <h1>{text.parentArea.heading}</h1>
       <Learners />
       <Curricula />
+      <LlmSettingsForm />
+      <Usage />
       <button type="button" onClick={() => api.logoutParent().then(onLogout)}>
         {text.parentArea.logout}
       </button>
@@ -146,6 +149,99 @@ function Curricula() {
           )}
         </article>
       ))}
+    </section>
+  );
+}
+
+function LlmSettingsForm() {
+  const [saved, setSaved] = useState<LlmSettings>();
+  const [provider, setProvider] = useState<string>("");
+  const [model, setModel] = useState("");
+  const [message, setMessage] = useState<{ text: string; error?: boolean }>();
+  const [testing, setTesting] = useState(false);
+
+  const load = (settings: LlmSettings) => (setSaved(settings), setProvider(settings.provider), setModel(settings.model));
+  useEffect(() => void api.llmSettings().then(load, () => setMessage({ text: text.genericError, error: true })), []);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!isProviderId(provider)) return;
+    const res = await api.saveLlmSettings({ provider, model });
+    if (res.ok) return (load(await res.json()), setMessage({ text: text.llmSettings.saved }));
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    setMessage({ text: text.llmSettings.errors[body.error ?? ""] ?? text.genericError, error: true });
+  }
+
+  async function test() {
+    setTesting(true);
+    setMessage(undefined);
+    try {
+      const result = await api.testConnection();
+      setMessage(result.ok ? { text: text.llmSettings.ok } : { text: text.llmSettings.testErrors[result.error](result.envVar, result.model), error: true });
+    } catch {
+      setMessage({ text: text.genericError, error: true });
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  if (!saved) return message ? <p className="error">{message.text}</p> : <p>{text.loading}</p>;
+  const info = isProviderId(provider) ? providerInfo(provider) : undefined;
+  const changed = provider !== saved.provider || model.trim() !== saved.model;
+  return (
+    <section>
+      <h2>{text.llmSettings.heading}</h2>
+      <p className="hint">{text.llmSettings.intro}</p>
+      <form className="card" onSubmit={save}>
+        <label>
+          {text.llmSettings.providerLabel}
+          <select value={provider} onChange={(e) => (setProvider(e.target.value), setMessage(undefined))}>
+            {PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {text.llmSettings.modelLabel}
+          <input list="llm-models" value={model} onChange={(e) => (setModel(e.target.value), setMessage(undefined))} />
+          <datalist id="llm-models">
+            {info?.models.map((m) => <option key={m} value={m} />)}
+          </datalist>
+        </label>
+        {info && <span className="hint">{text.llmSettings.keyHint(info.envVar)}</span>}
+        {message && <p className={message.error ? "error" : "hint"}>{message.text}</p>}
+        <div className="actions">
+          <button type="submit" disabled={!changed}>
+            {text.llmSettings.save}
+          </button>
+          {/* Tests the saved settings, so it waits until changes are saved. */}
+          <button type="button" disabled={changed || testing} onClick={() => void test()}>
+            {testing ? text.llmSettings.testing : text.llmSettings.test}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+function Usage() {
+  const [days, setDays] = useState<DailyUsage[]>();
+  const [error, setError] = useState<string>();
+  useEffect(() => void api.usage().then(setDays, () => setError(text.genericError)), []);
+
+  if (error) return <p className="error">{error}</p>;
+  if (!days) return <p>{text.loading}</p>;
+  return (
+    <section>
+      <h2>{text.usage.heading}</h2>
+      {days.length === 0 && <p>{text.usage.none}</p>}
+      <ul>
+        {days.map((d) => (
+          <li key={d.date}>{text.usage.day(d.date, d.calls, d.inputTokens, d.outputTokens)}</li>
+        ))}
+      </ul>
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { PIN_PATTERN } from "../shared/auth";
 import type { Learner, LearnerInput } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { hashPassword } from "./auth";
+import { readJsonObject } from "./http";
 import type { Db } from "./db";
 import { learners } from "./db/schema";
 
@@ -21,12 +22,6 @@ export function findLearner(db: Db, id: number): LearnerRow | undefined {
 
 export function hasPin(learner: LearnerRow): boolean {
   return learner.pinHash !== null;
-}
-
-/** A JSON request body as an object of unknown fields, or undefined when it isn't one. */
-export async function readJsonObject(c: Context): Promise<Record<string, unknown> | undefined> {
-  const body: unknown = await c.req.json().catch(() => undefined);
-  return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : undefined;
 }
 
 /** The Parent's Learner management, mounted under the Parent's protected routes. */
