@@ -17,7 +17,7 @@ git clone https://github.com/<you>/<your-fork>.git home-tutor
 cd home-tutor
 ```
 
-You need either **Node.js 20 or later** (for `npm start`) or **Docker** with Compose (for `docker compose up`).
+You need either **Node.js 20.12 or later** (for `npm start`) or **Docker** with Compose (for `docker compose up`).
 
 ## 2. Add a Curriculum
 
@@ -37,6 +37,14 @@ npm install
 npm run curriculum:check                              # every Curriculum in curricula/
 npm run curriculum:check -- curricula/<your-folder>   # just one
 ```
+
+With Docker only, run the same check inside the container instead:
+
+```sh
+docker compose run --rm home-tutor node_modules/.bin/tsx src/curriculum/check.ts
+```
+
+The Parent area's *Curricula* section shows the same errors.
 
 ## 3. Set your API key
 
@@ -61,7 +69,7 @@ npm start
 docker compose up -d
 ```
 
-Docker mounts `./data` (your family's data) and `./curricula` (read-only) into the container, so both survive rebuilds, and passes your key through from `.env`. The container runs as user id 1000. If `id -u` prints something else, set `HOME_TUTOR_UID` and `HOME_TUTOR_GID` in `.env`. To use a different port, set `HOME_TUTOR_PORT`. After editing a Curriculum or `.env`, run `docker compose restart`. After pulling a new version of the app, run `docker compose up -d --build`.
+Docker mounts `./data` (your family's data) and `./curricula` (read-only) into the container, so both survive rebuilds, and passes your key through from `.env`. The container runs as user id 1000. If `id -u` prints something else, set `HOME_TUTOR_UID` and `HOME_TUTOR_GID` in `.env`. To use a different port, set `HOME_TUTOR_PORT`. Curriculum edits are picked up straight away. After editing `.env`, run `docker compose up -d` (a plain `restart` keeps the old environment). After pulling a new version of the app, run `docker compose up -d --build`.
 
 Either way, open <http://localhost:3000>.
 
@@ -82,13 +90,15 @@ In the Parent area you can follow along: progress, overdue and Flagged Goals, Qu
 
 ## Configuration
 
+`npm start` reads these from `.env` or your shell. `docker compose` reads them from `.env`.
+
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | — | Key for Anthropic (Claude) |
 | `OPENAI_API_KEY` | — | Key for OpenAI |
 | `PORT` | `3000` | Port for `npm start` |
 | `HOME_TUTOR_DATA_DIR` | `data` | Where the SQLite database lives (`npm start` only) |
-| `HOME_TUTOR_CURRICULA_DIR` | `curricula` | Where Curriculum folders live (`npm start` and `curriculum:check`) |
+| `HOME_TUTOR_CURRICULA_DIR` | `curricula` | Where Curriculum folders live (`npm start`, and `curriculum:check` when set in your shell) |
 | `HOME_TUTOR_PORT` | `3000` | Host port for `docker compose up` |
 | `HOME_TUTOR_UID` / `HOME_TUTOR_GID` | `1000` | User and group the Docker container runs as |
 
