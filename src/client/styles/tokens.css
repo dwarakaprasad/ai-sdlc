@@ -1,0 +1,107 @@
+/*
+ * The Studio design tokens (direction B of the redesign, #24). Screens and components use only these, never raw values.
+ * Colours have fixed meanings: ink for actions, orange for the Streak, gold for rewards, green for right,
+ * warm for "not quite" (never a harsh red), lilac for "with your Parent", yellow for the Tutor and "you are here".
+ */
+:root {
+  /* Colour */
+  --ink: #16181d;
+  --ink-2: #3a3f4a;
+  --ink-edge: #000000;
+  --muted: #6f7380;
+  --line: #e8e6df;
+  --paper: #f7f6f2;
+  --card: #ffffff;
+  --on-ink: #ffffff;
+  --disabled: #d9d7cf;
+  --disabled-edge: #c8c6be;
+  --yellow: #ffd23f;
+  --yellow-soft: #fffbea;
+  --orange: #ff7a1a;
+  --gold: #c99a06;
+  --green: #1f9d55;
+  --green-soft: #e6f6ec;
+  --warm: #d9622b;
+  --warm-soft: #fdf0e8;
+  --warm-line: #f6d5c2;
+  --lilac: #7b5cc4;
+  --lilac-soft: #f2eefb;
+  --shape: rgba(22, 24, 29, 0.15);
+  --line-strong: #cfccc2;
+  --line-hover: #bdbab0;
+  --green-ink: #145c34;
+  --warm-ink: #8a3a12;
+  --on-ink-muted: #a5a8b3;
+  --yellow-edge: #c9a21f;
+  --lift: 0 12px 40px rgba(22, 24, 29, 0.05);
+  --orange-soft: #ffb020;
+  --avatar-dim: rgba(29, 36, 51, 0.22);
+
+  /* Accent colours a Learner picks for their Avatar (ACCENT_COLORS), in palette order. */
+  --accent-coral: #ff6b5b;
+  --accent-amber: #ff9f1c;
+  --accent-sun: #f7c948;
+  --accent-mint: #3ecf8e;
+  --accent-sky: #1cb0f6;
+  --accent-indigo: #5b6cff;
+  --accent-violet: #a55eea;
+  --accent-pink: #ff5fa2;
+
+  /* Spacing */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 40px;
+  --s-9: 56px;
+
+  /* Radii */
+  --r-card: 16px;
+  --r-card-lg: 20px;
+  --r-btn: 10px;
+  --r-field: 12px;
+  --r-tag: 6px;
+  --r-pill: 999px;
+
+  /* Type */
+  --font: "Nunito Variable", system-ui, sans-serif;
+  --t-eyebrow: 12px;
+  --t-small: 14px;
+  --t-h3: 15px;
+  --t-body: 16px;
+  --t-wordmark-small: 17px;
+  --t-feedback: 17px;
+  --t-lead: 18px;
+  --t-option: 19px;
+  --t-wordmark: 20px;
+  --t-name: 22px;
+  --t-h2: 24px;
+  --t-prompt: 26px;
+  --t-h1: 30px;
+  --t-big: 40px;
+  --t-display: 44px;
+  --t-score: 96px;
+
+  /* Motion: subtle only, and all of it off under prefers-reduced-motion (base.css). */
+  --m-fast: 80ms;
+  --m-base: 150ms;
+  --m-enter: 280ms;
+  --m-draw-tick: 400ms;
+  --m-bounce: 450ms;
+  --m-draw: 800ms;
+  --m-pulse: 1.6s;
+  --ease-bounce: cubic-bezier(0.3, 1.6, 0.6, 1);
+
+  /* Touch: the smallest control anywhere on the Learner side. */
+  --touch: 44px;
+
+  /* The Parent's denser variant (.dense): smaller type and tighter controls, for a laptop more than fingers. */
+  --t-dense: 15px;
+  --t-dense-small: 13px;
+  --dense-control: 36px;
+  --dense-field: 40px;
+  --dense-sidebar: 240px;
+}

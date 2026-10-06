@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Goal, GoalCard } from "../src/shared/api";
 import { inFolder, validCurriculum, writeFixture } from "./support/curriculumFixture";
 import { createTestApp } from "./support/testApp";
+import { goalCards } from "./support/today";
 
 /** validCurriculum plus an ELA Subject, so Learners have Goals in two Subjects. */
 const twoSubjects = {
@@ -43,7 +44,7 @@ async function household() {
   const spread = (termKey: string, termEndDate: string) => parent(`/api/parent/learners/${ada}/goals/spread`, { termKey, termEndDate });
   const parentGoals = async (): Promise<Goal[]> => (await parent(`/api/parent/learners/${ada}/goals`)).json();
   /** Titles of Ada's Goal cards, in the order the Learner home screen shows them. */
-  const cardTitles = async () => ((await (await learner("/api/learner/goals")).json()) as GoalCard[]).map((card) => card.title);
+  const cardTitles = async () => (await goalCards(learner)).map((card) => card.title);
   return { parent, learner, ada, setGoal, setToday, spread, parentGoals, cardTitles };
 }
 
@@ -81,6 +82,7 @@ describe("Goals in the Parent area", () => {
       targetDate: "2026-10-20",
       status: "active",
       overdue: false,
+      daysOverdue: 0,
       orphaned: false,
     });
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toEqual([goal]);
@@ -129,11 +131,8 @@ describe("Goal cards on the Learner home screen", () => {
     await setGoal(equivalentRatios, "2026-10-08");
     await setGoal(mainIdea, "2026-10-12");
 
-    const res = await learner("/api/learner/goals");
-
-    expect(res.status).toBe(200);
     // Math's current Goal is the first in its queue, even though a later one has an earlier Target Date.
-    expect(await res.json()).toEqual([
+    expect(await goalCards(learner)).toEqual([
       { id: expect.any(Number), kind: "lesson", subjectName: "ELA", title: "Main idea", targetDate: "2026-10-12", overdue: false },
       { id: expect.any(Number), kind: "lesson", subjectName: "Math", title: "Understanding ratios", targetDate: "2026-10-20", overdue: false },
     ]);
@@ -142,7 +141,7 @@ describe("Goal cards on the Learner home screen", () => {
   it("shows no Goal cards until the Parent sets a Goal", async () => {
     const { learner } = await household();
 
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    expect(await goalCards(learner)).toEqual([]);
   });
 
   it("shows a Learner only their own Goals", async () => {
@@ -150,7 +149,7 @@ describe("Goal cards on the Learner home screen", () => {
     const ben = (await (await parent("/api/parent/learners", { name: "Ben", grade: "6", curriculumId: "grade-6" })).json()).id as number;
     await setGoal(dividingFractions, "2026-10-20", ben);
 
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    expect(await goalCards(learner)).toEqual([]);
   });
 });
 
@@ -161,14 +160,30 @@ describe("Overdue Goals", () => {
 
     setToday(2026, 10, 10);
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toMatchObject([{ status: "active", overdue: false }]);
-    expect(await (await learner("/api/learner/goals")).json()).toMatchObject([{ title: "Understanding ratios", overdue: false }]);
+    expect(await goalCards(learner)).toMatchObject([{ title: "Understanding ratios", overdue: false }]);
 
     setToday(2026, 10, 11);
     expect(await (await parent(`/api/parent/learners/${ada}/goals`)).json()).toMatchObject([
       { lessonKey: ratios, targetDate: "2026-10-10", status: "active", overdue: true },
     ]);
-    expect(await (await learner("/api/learner/goals")).json()).toMatchObject([
+    expect(await goalCards(learner)).toMatchObject([
       { title: "Understanding ratios", targetDate: "2026-10-10", overdue: true },
+    ]);
+  });
+
+  it("counts how many days a Goal is overdue, and none for a Goal that isn't overdue", async () => {
+    const { parent, ada, setGoal, setToday } = await household();
+    await setGoal(ratios, "2026-10-10");
+    await setGoal(mainIdea, "2026-10-30");
+    const goals = async (): Promise<Goal[]> => (await parent(`/api/parent/learners/${ada}/goals`)).json();
+
+    setToday(2026, 10, 10);
+    expect((await goals()).map((g) => g.daysOverdue)).toEqual([0, 0]);
+
+    setToday(2026, 10, 13);
+    expect(await goals()).toEqual([
+      expect.objectContaining({ lessonKey: mainIdea, overdue: false, daysOverdue: 0 }),
+      expect.objectContaining({ lessonKey: ratios, overdue: true, daysOverdue: 3 }),
     ]);
   });
 

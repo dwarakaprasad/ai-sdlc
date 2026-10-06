@@ -1,0 +1,465 @@
+/* Styles for the shared components (ui.tsx, TopBar.tsx, TutorMark.tsx). Tokens only. */
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  min-height: 48px;
+  min-width: var(--touch);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-btn);
+  border: 1.5px solid transparent;
+  font-weight: 800;
+  font-size: var(--t-body);
+  white-space: nowrap;
+  transition: transform var(--m-fast), box-shadow var(--m-fast), color var(--m-base);
+}
+.btn-ink {
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: 0 3px 0 var(--ink-edge);
+}
+.btn-ink:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink-edge);
+}
+.btn-ink:disabled {
+  background: var(--disabled);
+  box-shadow: 0 3px 0 var(--disabled-edge);
+  cursor: default;
+}
+.btn-outline {
+  min-height: var(--touch);
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: 0 2px 0 var(--line);
+}
+.btn-outline:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.btn-quiet {
+  min-height: var(--touch);
+  padding: 0 var(--s-2);
+  margin-left: calc(-1 * var(--s-2));
+  background: none;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: var(--t-h3);
+}
+.btn-quiet:hover {
+  color: var(--ink);
+}
+.btn:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: var(--s-5);
+}
+
+/* Field */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.field-label {
+  font-weight: 800;
+  color: var(--ink);
+  font-size: var(--t-h3);
+}
+.field-hint {
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+.field :is(input, select, textarea) {
+  min-height: 52px;
+  padding: 0 var(--s-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--s-3);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--t-lead);
+  outline: none;
+  transition: border-color var(--m-base);
+}
+.field textarea {
+  padding: var(--s-3) var(--s-4);
+  resize: vertical;
+}
+.field :is(input, select, textarea):focus {
+  border-color: var(--ink);
+  background: var(--card);
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  padding: 1px var(--s-2);
+  background: var(--paper);
+  color: var(--ink-2);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.tag-warm {
+  background: var(--warm-soft);
+  border-color: var(--warm-line);
+  color: var(--warm);
+}
+
+/* Meter */
+.meter {
+  display: block;
+  flex: 1;
+  height: 6px;
+  background: var(--line);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--meter-color, var(--ink));
+}
+
+/* Wordmark and top bar */
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-weight: 800;
+  font-size: var(--t-wordmark);
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  padding: var(--s-2) var(--s-7);
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.top-bar .wordmark {
+  font-size: var(--t-wordmark-small);
+}
+.top-nav {
+  display: flex;
+  gap: var(--s-1);
+}
+.top-nav button {
+  min-height: var(--touch);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--s-2);
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.top-nav button[aria-current="page"] {
+  color: var(--ink);
+  background: var(--paper);
+}
+.top-end {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+}
+
+/* Tutor mark */
+.tutor-mark {
+  flex: none;
+}
+.tutor-face {
+  fill: var(--ink);
+}
+.tutor-corner {
+  fill: var(--yellow);
+}
+.tutor-eyes {
+  fill: var(--on-ink);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.tutor-line {
+  fill: none;
+  stroke: var(--on-ink);
+  stroke-linecap: round;
+}
+.tutor-idle .tutor-eyes {
+  animation: tutor-blink 5s ease-in-out infinite;
+}
+.tutor-thinking .tutor-eyes {
+  transform: translate(2px, -3px);
+}
+@keyframes tutor-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.15);
+  }
+}
+
+@media (max-width: 760px) {
+  .top-bar {
+    padding: var(--s-2) var(--s-4);
+    gap: var(--s-3);
+  }
+  .top-bar .wordmark {
+    display: none;
+  }
+}
+
+/* Confetti: falls twice, then fades away. Under reduced motion the pieces stay put, a still sprinkle. */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.confetti i {
+  position: absolute;
+  width: 6px;
+  height: 10px;
+  animation: confetti-fall linear 2 both;
+}
+@keyframes confetti-fall {
+  0% {
+    opacity: 1;
+    translate: 0 -60vh;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 30px 70vh;
+  }
+}
+
+/* Avatar: a drawing on the Learner's accent colour (Avatar.tsx) */
+.avatar {
+  flex: none;
+}
+.accent-coral {
+  color: var(--accent-coral);
+}
+.accent-amber {
+  color: var(--accent-amber);
+}
+.accent-sun {
+  color: var(--accent-sun);
+}
+.accent-mint {
+  color: var(--accent-mint);
+}
+.accent-sky {
+  color: var(--accent-sky);
+}
+.accent-indigo {
+  color: var(--accent-indigo);
+}
+.accent-violet {
+  color: var(--accent-violet);
+}
+.accent-pink {
+  color: var(--accent-pink);
+}
+.avatar.avatar-muted {
+  color: var(--ink-2);
+}
+.avatar-tile,
+.avatar .a {
+  fill: currentColor;
+}
+.avatar .w {
+  fill: var(--on-ink);
+}
+.avatar .k {
+  fill: var(--ink);
+}
+.avatar .d {
+  fill: var(--avatar-dim);
+}
+.avatar .y {
+  fill: var(--yellow);
+}
+.avatar .o {
+  fill: var(--orange-soft);
+}
+.avatar :is(.w-line, .k-line, .a-line, .d-line) {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.avatar .w-line,
+.avatar .w-edge {
+  stroke: var(--on-ink);
+}
+.avatar .k-line {
+  stroke: var(--ink);
+}
+.avatar .a-line {
+  stroke: currentColor;
+}
+.avatar .d-line {
+  stroke: var(--avatar-dim);
+}
+.avatar-initial {
+  fill: var(--on-ink);
+  font-size: var(--t-h1);
+  font-weight: 800;
+  font-family: var(--font);
+}
+
+/* Wordmark with a label beside it in the top bar (the Parent area's) */
+.top-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* Segmented: a few choices side by side, one of them on */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  background: var(--line);
+  border-radius: var(--r-btn);
+}
+.segmented button {
+  min-height: var(--touch);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--s-2);
+  background: none;
+  font-weight: 700;
+  color: var(--muted);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 1px 2px var(--shape);
+}
+.segmented button:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 1px;
+}
+
+/*
+ * The denser variant of the shared components, for the Parent area (#24): the same look, with smaller type and tighter
+ * controls. Anything inside .dense takes it.
+ */
+.dense {
+  font-size: var(--t-dense);
+}
+.dense .btn {
+  min-height: var(--dense-control);
+  padding: 0 var(--s-3);
+  font-size: var(--t-small);
+}
+.dense .btn-quiet {
+  padding: 0 var(--s-2);
+}
+.dense .field-label {
+  font-size: var(--t-small);
+}
+.dense .field-hint {
+  font-size: var(--t-dense-small);
+}
+.dense .field :is(input, select, textarea) {
+  min-height: var(--dense-field);
+  padding: 0 var(--s-3);
+  font-size: var(--t-dense);
+  border-radius: var(--r-btn);
+}
+.dense :is(.top-nav, .segmented) button {
+  min-height: var(--dense-control);
+}
+.dense .tutor-text {
+  font-size: var(--t-dense);
+}
+
+/* Streak (Streak.tsx): orange, the Streak's colour. A chip for the top bar, and the last seven days */
+.streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-weight: 800;
+  color: var(--orange);
+}
+.streak-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  padding-bottom: var(--s-4);
+  margin-bottom: var(--s-4);
+  border-bottom: 1px solid var(--line);
+}
+.achievement-streak .icon {
+  color: var(--orange);
+}
+.streak-start {
+  display: block;
+  color: var(--ink);
+}
+.streak-days {
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  margin: var(--s-2) 0 0;
+  padding: 0;
+}
+.streak-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-1);
+}
+.streak-day > span[aria-hidden] {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-tag);
+  background: var(--line);
+}
+.streak-worked > span[aria-hidden] {
+  background: var(--orange);
+}
+.streak-today > span[aria-hidden] {
+  background: var(--card);
+  border: 2.5px solid var(--orange);
+}
+.streak-rest > span[aria-hidden] {
+  background: transparent;
+  border: 1.5px dashed var(--line-strong);
+}
+.streak-day small {
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  color: var(--muted);
+}
+.streak-week .streak-note {
+  margin: 0;
+  font-size: var(--t-small);
+}

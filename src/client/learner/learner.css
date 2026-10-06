@@ -1,0 +1,596 @@
+/* The Learner screens that follow prototype B: the profile picker, Today, and the Lesson-unavailable notice. Tokens only. */
+
+/* Profile picker and PIN: a split screen */
+.split {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.split-start {
+  position: relative;
+  padding: var(--s-9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s-2);
+}
+.split-start .wordmark {
+  position: absolute;
+  top: var(--s-7);
+  left: var(--s-9);
+}
+.split-start .avatar {
+  margin-bottom: var(--s-3);
+}
+.split-end {
+  background: var(--card);
+  border-left: 1px solid var(--line);
+  padding: var(--s-9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s-3);
+}
+.split-aside {
+  align-self: flex-start;
+}
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  text-align: left;
+  color: var(--muted);
+  transition: border-color var(--m-base), transform var(--m-base);
+}
+.profile-row:hover,
+.profile-row:focus-visible {
+  border-color: var(--ink);
+  transform: translateX(4px);
+  outline: none;
+}
+.profile-name {
+  flex: 1;
+  font-size: var(--t-name);
+  font-weight: 800;
+  color: var(--ink);
+}
+.profile-pin {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-weight: 700;
+}
+
+/* Logged-in shell */
+.learner-app {
+  min-height: 100vh;
+}
+.switch-profile {
+  display: grid;
+  place-items: center;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-btn);
+  background: none;
+}
+.switch-profile:focus-visible {
+  outline: 3px solid var(--yellow);
+}
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: var(--s-7) var(--s-7) var(--s-9);
+}
+
+/* Today */
+.home-grid {
+  margin-top: var(--s-5);
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: var(--s-5);
+  align-items: start;
+}
+.achievements {
+  border-radius: var(--r-card-lg);
+}
+.achievement {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.achievement strong {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--t-name);
+  color: var(--ink);
+}
+.achievement-goals .icon {
+  color: var(--gold);
+}
+.continue-card {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card-lg);
+  overflow: hidden;
+}
+.continue-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--yellow);
+}
+.continue-art .tutor-mark {
+  position: relative;
+  z-index: 1;
+}
+.continue-shape {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -60px;
+  bottom: -70px;
+  border-radius: 50%;
+  border: 2px solid var(--shape);
+}
+.continue-body {
+  padding: var(--s-6) var(--s-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.continue-note {
+  margin: 0 0 var(--s-3);
+  display: flex;
+  gap: var(--s-1);
+  align-items: center;
+  font-size: var(--t-h3);
+}
+.home-section {
+  margin: var(--s-7) 0 var(--s-3);
+}
+.subject-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.subject-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 180px 90px;
+  gap: var(--s-3);
+  align-items: center;
+  min-height: 68px;
+  padding: var(--s-3) var(--s-4);
+}
+.subject-row + .subject-row {
+  border-top: 1px solid var(--line);
+}
+/* The Subject's name opens its Learning Path. */
+.subject-row-name {
+  justify-self: start;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: var(--s-1);
+}
+.subject-row-name:hover {
+  text-decoration-color: var(--ink);
+}
+.subject-row-name:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.subject-row-goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--s-2);
+  color: var(--ink-2);
+}
+.subject-row-parent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  color: var(--lilac);
+  font-weight: 700;
+}
+.subject-row-meter {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.subject-row-meter small {
+  width: 3em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.page > .home-empty {
+  margin-top: var(--s-5);
+  display: flex;
+  gap: var(--s-4);
+  align-items: center;
+}
+
+/* Learning Path: a side panel beside the Term's Units as timeline lists */
+.path {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--s-8);
+}
+.path-side {
+  position: sticky;
+  /* Below the top bar. */
+  top: calc(var(--s-9) + var(--s-8));
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+}
+.path-ring {
+  width: 120px;
+  height: 120px;
+  margin: var(--s-4) 0;
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background:
+    radial-gradient(closest-side, var(--paper) 82%, transparent 83%),
+    conic-gradient(var(--ink) calc(var(--done) * 360deg), var(--line) 0);
+}
+.path-ring strong {
+  font-size: var(--t-h1);
+  line-height: 1;
+  color: var(--ink);
+}
+.path-ring small {
+  color: var(--muted);
+  font-weight: 700;
+}
+.path-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-1);
+  font-size: var(--t-small);
+}
+.path-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: var(--s-2);
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+.path-legend .met {
+  background: var(--ink);
+}
+.path-legend .current {
+  background: var(--yellow);
+  border: 2px solid var(--ink);
+}
+.path-legend .skipped {
+  background: var(--line);
+}
+.path-legend .with-parent {
+  background: var(--lilac-soft);
+  border: 2px solid var(--lilac);
+}
+.path-legend .ahead {
+  border: 2px solid var(--line-strong);
+}
+.path-unit {
+  margin-bottom: var(--s-7);
+}
+.path-unit header {
+  margin-bottom: var(--s-2);
+}
+.path-unit ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.path-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: 68px;
+  padding: var(--s-3) var(--s-4);
+}
+.path-step + .path-step {
+  border-top: 1px solid var(--line);
+}
+/* The timeline's line, through every mark. */
+.path-step::before {
+  content: "";
+  position: absolute;
+  /* Through the middle of the marks: the step's padding plus half a mark. */
+  left: calc(var(--s-4) + 13px);
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+.path-step:first-child::before {
+  top: 50%;
+}
+.path-step:last-child::before {
+  bottom: 50%;
+}
+.path-dot {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  background: var(--card);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.path-step.unit-test .path-dot {
+  border-radius: var(--r-tag);
+}
+.path-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.path-text small {
+  font-size: var(--t-eyebrow);
+  font-weight: 800;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.path-text strong {
+  color: var(--ink);
+  font-size: var(--t-wordmark-small);
+}
+.path-state {
+  font-size: var(--t-small);
+  font-weight: 700;
+  color: var(--muted);
+}
+.path-step.met .path-dot {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.path-step:is(.skipped, .ahead) .path-text strong {
+  color: var(--muted);
+  font-weight: 700;
+}
+.path-step.skipped .path-dot {
+  background: var(--line);
+  border-color: var(--line);
+}
+.path-step.with-parent .path-dot {
+  background: var(--lilac-soft);
+  border-color: var(--lilac);
+  color: var(--lilac);
+}
+.path-step.with-parent .path-state {
+  color: var(--lilac);
+}
+.path-step.current {
+  background: var(--yellow-soft);
+}
+/* The current node pulses gently; like all motion, not under reduced motion. */
+.path-step.current .path-dot {
+  background: var(--yellow);
+  border-color: var(--ink);
+  animation: pulse-ring var(--m-pulse) ease-out infinite;
+}
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--yellow);
+  }
+  100% {
+    box-shadow: 0 0 0 var(--s-4) transparent;
+  }
+}
+
+/* A calm note in place of a screen */
+.notice-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+}
+.notice {
+  max-width: 30rem;
+  padding: var(--s-7);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+.notice-text {
+  margin: 0;
+  font-size: var(--t-lead);
+  color: var(--ink);
+}
+
+@media (max-width: 1000px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+  .path {
+    grid-template-columns: 1fr;
+    gap: var(--s-4);
+  }
+  .path-side {
+    position: static;
+  }
+  .path-ring,
+  .path-legend {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  .split-start {
+    padding: var(--s-6) var(--s-5);
+  }
+  .split-start .wordmark {
+    position: static;
+    margin-bottom: var(--s-6);
+  }
+  .split-end {
+    justify-content: flex-start;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: var(--s-6) var(--s-5) var(--s-9);
+  }
+  .page {
+    padding: var(--s-5) var(--s-4) var(--s-9);
+  }
+  .continue-card {
+    grid-template-columns: 1fr;
+  }
+  .subject-row-meter {
+    display: none;
+  }
+  .continue-art {
+    height: 140px;
+  }
+  .subject-row {
+    grid-template-columns: 1fr auto;
+  }
+  .subject-row-goal {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .subject-row > :last-child {
+    grid-row: 1 / 3;
+    grid-column: 2;
+  }
+}
+
+/* Avatar pick: a live profile card beside the pictures and colours */
+.name-card {
+  margin-top: var(--s-6);
+  display: flex;
+  gap: var(--s-4);
+  align-items: center;
+  width: fit-content;
+  padding: var(--s-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card-lg);
+  box-shadow: var(--lift);
+}
+.name-card strong {
+  font-size: var(--t-name);
+  color: var(--ink);
+}
+.avatar-pick {
+  justify-content: flex-start;
+  gap: var(--s-6);
+}
+.avatar-pick fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.avatar-pick legend {
+  margin-bottom: var(--s-3);
+}
+.avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--s-2);
+}
+.avatar-option,
+.swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid transparent;
+  border-radius: var(--r-card);
+  cursor: pointer;
+}
+.avatar-option {
+  padding: var(--s-1);
+}
+/* The real radios stay in the page for keyboards and screen readers; the border shows which is picked. */
+.avatar-option input,
+.swatch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+.avatar-option:hover {
+  border-color: var(--line);
+}
+.avatar-option:has(input:checked),
+.swatch:has(input:checked) {
+  border-color: var(--ink);
+}
+.avatar-option:has(input:focus-visible),
+.swatch:has(input:focus-visible) {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.swatch {
+  width: var(--touch);
+  height: var(--touch);
+  padding: var(--s-1);
+  border-radius: var(--r-field);
+}
+.swatch-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-tag);
+  background: currentColor;
+}
+.avatar-pick-done {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: center;
+  justify-content: space-between;
+}
+@media (max-width: 760px) {
+  .avatar-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

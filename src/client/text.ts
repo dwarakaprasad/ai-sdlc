@@ -1,17 +1,52 @@
 import { MIN_PASSWORD_LENGTH, PIN_LENGTH } from "../shared/auth";
-import { MAX_BREAK_MINUTES, MAX_QUIZ_ATTEMPTS_LIMIT, MAX_RE_EXPLANATIONS_LIMIT, type GoalKind, type GoalStatus } from "../shared/api";
+import {
+  MAX_BREAK_MINUTES,
+  MAX_QUIZ_ATTEMPTS_LIMIT,
+  MAX_RE_EXPLANATIONS_LIMIT,
+  type AccentColor,
+  type AvatarId,
+  type GoalKind,
+  type GoalStatus,
+  type PathState,
+  type StreakDayState,
+} from "../shared/api";
 import type { LlmErrorKind } from "../shared/llm";
 
-const pinDigits = `${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
+/** The Tutor's name, in the UI only: in the domain and the code it is the Tutor. */
+const TUTOR_NAME = "Jarvis";
+const pinDigits =`${PIN_LENGTH.min} to ${PIN_LENGTH.max} digits`;
 
 /** What the Learner sees instead of a Tutor reply once the Parent's daily token cap is reached. */
 const DAILY_LIMIT = "That's enough for today! You've worked really hard. Come back tomorrow to carry on.";
 const LESSON_UNAVAILABLE = "This Lesson can't be taught just now. Ask your Parent to check the Curriculum in the Parent area.";
 
-/** A YYYY-MM-DD date as e.g. "Tue, Oct 20". Read as a local day so it never shifts across time zones. */
-function formatDate(date: string): string {
+/** A YYYY-MM-DD date read as a local day, so it never shifts across time zones. */
+function localDay(date: string): Date {
   const [year, month, day] = date.split("-").map(Number);
-  return new Date(year!, month! - 1, day).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return new Date(year!, month! - 1, day);
+}
+
+/** A YYYY-MM-DD date as e.g. "Tue, Oct 20". */
+const formatDate = (date: string) => localDay(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+
+/** A YYYY-MM-DD date's weekday, e.g. "Tuesday". */
+const weekday = (date: string) => localDay(date).toLocaleDateString("en-US", { weekday: "long" });
+
+/** A Streak's length, e.g. "1 day" or "6 days". */
+const streakDays = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;
+
+/** How many errors an invalid Curriculum has, e.g. "1 error" or "3 errors". */
+const errorCount = (count: number) => `${count} ${count === 1 ? "error" : "errors"}`;
+
+/**
+ * A Lesson or Unit key as the Parent's Goal table shows it: "math/term-1/unit-2/lesson-3" as "1.2.3", a Unit Test's
+ * "math/term-1/unit-2" as "U1.2"; any other key (an Orphaned Goal's, say) as it is.
+ */
+function shortKey(key: string): string {
+  const numbers = key.match(/^[^/]+\/term-(\d+)\/unit-(\d+)(?:\/lesson-(\d+))?$/);
+  if (!numbers) return key;
+  const [, term, unit, lesson] = numbers;
+  return lesson ? `${term}.${unit}.${lesson}` : `U${term}.${unit}`;
 }
 
 /** All UI text, in one place for later translation (English only in v1). */
@@ -40,6 +75,8 @@ export const text = {
   },
   learnerLogin: {
     heading: "Who's learning today?",
+    intro: "Tap your name to pick up where you left off.",
+    hasPin: "PIN",
     noProfiles: "No Learners yet. Ask your Parent to add you in the Parent area.",
     parentLink: "Parent area",
     pinHeading: (name: string) => `Hi ${name}! Enter your PIN.`,
@@ -48,59 +85,172 @@ export const text = {
     submit: "Start",
     back: "Back",
   },
+  /** Each Avatar picture's name, read out for the picture grid. */
+  avatars: {
+    fox: "Fox",
+    owl: "Owl",
+    cat: "Cat",
+    panda: "Panda",
+    frog: "Frog",
+    whale: "Whale",
+    penguin: "Penguin",
+    turtle: "Turtle",
+    rocket: "Rocket",
+    planet: "Planet",
+    bolt: "Lightning bolt",
+    mountain: "Mountain",
+    cactus: "Cactus",
+    guitar: "Guitar",
+    controller: "Game controller",
+    leaf: "Leaf",
+  } satisfies Record<AvatarId, string>,
+  /** Each accent colour's name, read out for the colour swatches. */
+  colors: {
+    coral: "Coral",
+    amber: "Amber",
+    sun: "Sunshine",
+    mint: "Mint",
+    sky: "Sky",
+    indigo: "Indigo",
+    violet: "Violet",
+    pink: "Pink",
+  } satisfies Record<AccentColor, string>,
+  avatarPick: {
+    eyebrow: "Set up",
+    heading: (name: string) => `Make it yours, ${name}.`,
+    intro: "Pick a picture and a colour. You can ask your Parent to change them later.",
+    pictureHeading: "Picture",
+    colorHeading: "Colour",
+    done: "Done",
+    notMe: (name: string) => `Not ${name}? Switch profile`,
+  },
   learnerHome: {
     heading: (name: string) => `Hi ${name}!`,
     noGoals: "There's nothing to work on yet. Your Parent will set your first Goal soon.",
-    goalsIntro: "Here's what to work on next:",
     target: (date: string) => `Aim to finish by ${formatDate(date)}`,
     catchUp: "This one's waiting for you. Let's catch up!",
+    catchUpTag: "Catch up",
+    continue: `Continue with ${TUTOR_NAME}`,
+    continueEyebrow: (subjectName: string, termName: string | undefined) => (termName ? `${subjectName} · ${termName}` : subjectName),
+    allSubjects: "All subjects",
+    /** Neutral on purpose: a Flagged or Orphaned Goal isn't the Learner's fault. */
+    withParent: "With your Parent for now",
+    allDone: "All done for now",
+    nothingNow: "Nothing to start just now. Your Parent will set up what comes next.",
+    termProgress: (met: number, total: number) => `${met}/${total}`,
+    termProgressLabel: (subjectName: string, termName: string, met: number, total: number) =>
+      `${subjectName} ${termName}: ${met} of ${total} Goals met`,
+    goalsMet: "Goals met",
     start: "Start",
-    logout: "Log out",
+  },
+  learningPath: {
+    unit: (n: number) => `Unit ${n}`,
+    lesson: (unit: number, n: number) => `Lesson ${unit}.${n}`,
+    unitTest: "Unit Test",
+    /** What each state says beside a node, and in the legend; the current node has its Start button instead. */
+    states: { met: "Done", current: "Up next", skipped: "Skipped", "with-parent": "With your Parent", ahead: "Later" } satisfies Record<PathState, string>,
+    legendLabel: "What the marks mean",
+    ring: (met: number, total: number) => `${met} of ${total} done this Term`,
+    ringOf: (total: number) => `of ${total}`,
+    noPath: "Your Learning Path shows up here once your Parent sets a Goal in this Subject.",
+  },
+  /** Never a lost-streak message: at 0 the Learner is invited to start one. */
+  streak: {
+    heading: "Streak",
+    days: streakDays,
+    chipLabel: (days: number) => `Streak: ${streakDays(days)}`,
+    startNew: "Start a new streak today",
+    weekLabel: "The last seven days",
+    weekendNote: "Weekends count, but never break it.",
+    /** A day in the week strip: its weekday's initial, and in full for a screen reader. */
+    weekdayInitial: (date: string) => weekday(date).charAt(0),
+    day: (date: string, state: StreakDayState) => `${weekday(date)}: ${{ worked: "worked", rest: "rest day", missed: "no work", today: "today, not yet" }[state]}`,
+  },
+  learnerNav: {
+    today: "Today",
+    learningPath: "Learning Path",
+    switchProfile: "Switch profile",
   },
   session: {
-    back: "Back to my Goals",
-    tutor: "Tutor",
+    back: "Back to Today",
+    leave: "Leave",
+    tutor: TUTOR_NAME,
     you: "You",
-    thinking: "The Tutor is thinking…",
+    writing: "is writing…",
+    steps: {
+      lesson: ["Explanation", "Check you've got it", "Lesson Quiz"],
+      "unit-test": ["Unit Test"],
+    } satisfies Record<GoalKind, string[]>,
+    stepsLabel: "Steps",
+    stepDone: "(done)",
+    objectivesHeading: "You'll be able to",
+    conversationLabel: "Conversation",
     messageLabel: "Your answer",
+    messagePlaceholder: "Write your answer…",
     send: "Send",
-    failed: "The Tutor couldn't reply just then.",
+    failed: `${TUTOR_NAME} couldn't reply just then.`,
     retry: "Try again",
     ended: "That's all for this Lesson today. Your Parent will help you with it next.",
-    errors: { lessonUnavailable: LESSON_UNAVAILABLE } as Record<string, string>,
+    lessonUnavailable: LESSON_UNAVAILABLE,
     dailyLimit: DAILY_LIMIT,
-    breakPrompt: (minutes: number) => `You've been working for ${minutes} minutes. Time for a short break? Stretch, get a drink, then come back.`,
+    breakHeading: (minutes: number) => `${minutes} minutes in. Time for a short break?`,
+    breakHint: "Stretch, get a drink, then come back. Your place is saved.",
     keepGoing: "Keep going",
+    takeBreak: "Take a break",
+    quizReady: { lesson: "Ready for the Lesson Quiz?", "unit-test": "Ready for the Unit Test?" } satisfies Record<GoalKind, string>,
+    quizReadyHint: {
+      lesson: "One question at a time, so take your time.",
+      "unit-test": "It covers every Lesson in this Unit, one question at a time.",
+    } satisfies Record<GoalKind, string>,
   },
   quiz: {
     heading: { lesson: "Lesson Quiz", "unit-test": "Unit Test" } satisfies Record<GoalKind, string>,
     attempt: (number: number, max: number) => `Quiz ${number} of ${max}`,
     start: "Start the Quiz",
     startAgain: "Start the new Quiz",
-    writing: "The Tutor is writing your quiz…",
+    writing: `${TUTOR_NAME} is writing your quiz…`,
     question: (n: number, total: number) => `Question ${n} of ${total}`,
+    topTitle: (kind: GoalKind, title: string, attempt: number, maxAttempts: number) =>
+      `${kind === "unit-test" ? "Unit Test" : "Lesson Quiz"} · ${title} · Quiz ${attempt} of ${maxAttempts}`,
+    numberPlaceholder: "0",
+    outOf: (total: number) => `/${total}`,
+    progress: (right: number, wrong: number, total: number) => `${right} right and ${wrong} not quite, of ${total} questions`,
     numberLabel: "Your answer",
     numberHint: "A number, like 12, 0.5 or 3/4.",
     writtenLabel: "Your answer",
-    submit: "Check my answer",
+    writtenPlaceholder: "Explain in a sentence or two",
+    submit: "Check",
     checking: "Checking…",
-    right: "That's right!",
+    right: "Correct.",
     wrong: "Not quite.",
-    correctAnswer: (answer: string) => `The answer is: ${answer}`,
-    next: "Next question",
-    seeScore: "See my score",
+    correctAnswer: (answer: string) => `Answer: ${answer}`,
+    next: "Continue",
     score: (correct: number, total: number) => `You got ${correct} out of ${total} right.`,
-    met: { lesson: "You've mastered this Lesson. Goal met!", "unit-test": "You've passed the Unit Test. Goal met!" } satisfies Record<GoalKind, string>,
-    reTeach: "Let's look again at the parts you missed, then try a new quiz.",
-    continue: "Continue",
+    choicesLabel: "Choose an answer",
+    rightChoice: "(the right answer)",
+    markedRight: "Right:",
+    markedWrong: "Not quite:",
+    reTeachHeading: "Let's look again at the parts you missed.",
+    reTeachHint: `${TUTOR_NAME} will go over these with you, then you'll get a new quiz.`,
+    goOver: `Go over it with ${TUTOR_NAME}`,
     ended: "You worked really hard on this quiz. That's all for today, and your Parent will help you with it next.",
-    failed: "The Tutor couldn't do that just then.",
+    failed: `${TUTOR_NAME} couldn't do that just then.`,
     errors: {
       invalidAnswer: "Choose one of the answers, or for a number question, type a number.",
       answerRequired: "Type your answer first.",
       dailyLimitReached: DAILY_LIMIT,
       lessonUnavailable: LESSON_UNAVAILABLE,
     } as Record<string, string>,
+  },
+  goalMet: {
+    eyebrow: (subjectName: string) => `Goal met · ${subjectName}`,
+    scoreLine: { lesson: "on the Lesson Quiz.", "unit-test": "on the Unit Test." } satisfies Record<GoalKind, string>,
+    score: (correct: number, total: number, on: string) => `${correct} of ${total} ${on} ${TUTOR_NAME} is proud of you!`,
+    goalsMet: "Goals met",
+    thisTerm: (subjectName: string, termName: string) => `${subjectName} ${termName}`,
+    upNext: "Up next",
+    when: (subjectName: string, targetDate: string) => `${subjectName} · Aim to finish by ${formatDate(targetDate)}`,
+    start: "Start",
   },
   teachingSettings: {
     heading: "Teaching",
@@ -121,15 +271,25 @@ export const text = {
   goals: {
     heading: "Goals",
     none: "No Goals yet. Set one below.",
-    goal: (subjectName: string, title: string, targetDate: string) => `${subjectName}: ${title}, by ${formatDate(targetDate)}`,
-    /** Shown after a Goal's details; an active Goal needs no label. */
-    status: { active: undefined, met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string | undefined>,
-    overdue: "Overdue",
+    noneNeedAttention: "Nothing needs your attention.",
+    filterLabel: "Which Goals",
+    filterAll: "All",
+    filterAttention: (count: number) => `Needs attention · ${count}`,
+    columns: { lesson: "Lesson", goal: "Goal", target: "Target", status: "Status", actions: "Actions" },
+    shortKey,
+    targetDate: formatDate,
+    daysOverdue: (days: number) => `${days} ${days === 1 ? "day" : "days"} overdue`,
+    status: { active: "Active", met: "Met", flagged: "Flagged", skipped: "Skipped" } satisfies Record<GoalStatus, string>,
     orphaned: "Lesson no longer in the Curriculum",
-    orphanedHint: "This Goal's Lesson was renumbered or removed. Re-point it to a Lesson, or remove it. Until then the Learner sees no card for this Subject.",
+    review: "Review",
+    change: "Change",
+    flaggedHint: `${TUTOR_NAME} handed this Goal back to you. Retry it for a fresh Session, mark it met if you taught it yourself, or skip it.`,
+    addHeading: "Set a Goal",
+    orphanedHint: "This Goal's Lesson was renumbered or removed. Re-point it to a Lesson, or remove it. Until then the Learner sees this Subject is with you, with nothing to start.",
     retry: "Retry",
     markMet: "Mark met",
     repointLabel: (title: string) => `New Lesson for ${title}`,
+    repointOption: (subjectName: string, unitTitle: string, title: string) => `${subjectName} · ${unitTitle} · ${title}`,
     repoint: "Re-point",
     remove: "Remove",
     confirmRemove: (title: string) => `Remove the Goal "${title}"? Its Sessions and transcripts will be deleted too.`,
@@ -170,12 +330,18 @@ export const text = {
   parentArea: {
     heading: "Parent area",
     logout: "Log out",
+    nav: { learners: "Learners", curricula: "Curricula", settings: "Settings", usage: "Usage" },
   },
   learners: {
     heading: "Learners",
     none: "No Learners yet. Add one below.",
-    details: (grade: string, curriculumId: string, hasPin: boolean) =>
-      `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""}`,
+    details: (grade: string, curriculumId: string, hasPin: boolean, streak: number) =>
+      `Grade ${grade} · ${curriculumId}${hasPin ? " · PIN set" : ""} · ${streak}-day streak`,
+    grade: (grade: string) => `Grade ${grade}`,
+    needsAttention: (count: number) => `${count} ${count === 1 ? "Goal needs" : "Goals need"} attention`,
+    views: { goals: "Goals", progress: "Progress" },
+    viewsLabel: "Learner views",
+    removeLearner: (name: string) => `Remove ${name}`,
     addHeading: "Add a Learner",
     editHeading: (name: string) => `Edit ${name}`,
     nameLabel: "Name",
@@ -187,6 +353,9 @@ export const text = {
     newPinLabel: "New PIN",
     newPinHint: `${pinDigits}. Leave empty to keep the current PIN.`,
     removePin: "Remove the PIN",
+    avatarLabel: "Avatar",
+    noAvatar: "None yet (picked at the next login)",
+    colorLabel: "Colour",
     add: "Add Learner",
     save: "Save",
     cancel: "Cancel",
@@ -198,6 +367,8 @@ export const text = {
       gradeRequired: "Enter a grade.",
       unknownCurriculum: "Choose a valid Curriculum.",
       invalidPin: `A PIN is ${pinDigits}.`,
+      unknownAvatar: "Choose one of the Avatars.",
+      unknownColor: "Choose one of the colours.",
     } as Record<string, string>,
   },
   llmSettings: {
@@ -223,11 +394,12 @@ export const text = {
     } satisfies Record<LlmErrorKind, (envVar: string, model: string) => string>,
   },
   progress: {
-    show: "Show progress",
-    hide: "Hide progress",
-    summary: (met: number, overdue: number, flagged: number, orphaned: number) =>
-      `${met} met · ${overdue} overdue · ${flagged} flagged · ${orphaned} with a missing Lesson`,
+    summary: { met: "Met", overdue: "Overdue", flagged: "Flagged", orphaned: "Missing Lesson" },
+    streak: "Streak (days)",
+    summaryLabel: "Goals at a glance",
+    noGoals: "No Goals yet, so no progress to show.",
     noSessions: "No Sessions yet.",
+    transcriptLabel: "Transcript",
     session: (startedAt: string, open: boolean) => `Session on ${new Date(startedAt).toLocaleString()}${open ? " (open)" : ""}`,
     attempt: (number: number, correct: number, total: number, passed: boolean) =>
       `Quiz ${number}: ${correct} out of ${total}${passed ? " (passed)" : ""}`,
@@ -255,16 +427,16 @@ export const text = {
   usage: {
     heading: "Token usage",
     none: "No tokens used yet.",
-    day: (date: string, calls: number, input: number, output: number) =>
-      `${date}: ${input.toLocaleString()} in, ${output.toLocaleString()} out (${calls} ${calls === 1 ? "call" : "calls"})`,
+    columns: { date: "Day", input: "Tokens in", output: "Tokens out", calls: "Calls" },
   },
   curricula: {
     heading: "Curricula",
     none: "No Curriculum folders found. Add one to the curricula folder (see docs/curriculum-format.md).",
     details: (district: string, grade: string, schoolYear: string) => `${district} · Grade ${grade} · ${schoolYear}`,
+    errorCount,
     subject: (name: string, lessons: number) => `${name}: ${lessons} ${lessons === 1 ? "Lesson" : "Lessons"}`,
     invalid: (count: number) =>
-      `This Curriculum has ${count} ${count === 1 ? "error" : "errors"} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
+      `This Curriculum has ${errorCount(count)} and can't be used for teaching until it's fixed. Run npm run curriculum:check for the same list.`,
     location: (file: string, line?: number) => (line === undefined ? file : `${file}:${line}`),
   },
 } as const;

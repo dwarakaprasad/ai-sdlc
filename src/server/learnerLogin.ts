@@ -1,10 +1,10 @@
 import { Hono } from "hono";
-import type { LearnerProfile, LoggedInLearner } from "../shared/api";
+import { isAccentColor, isAvatarId } from "../shared/api";
 import type { AppDeps } from "./deps";
 import { endLogin, requireRole, startLogin, verifyPassword } from "./auth";
-import { currentGoals } from "./goals";
+import { learnerToday, learningPathOf } from "./goals";
 import { readJsonObject } from "./http";
-import { allLearners, findLearner, hasPin, loggedInLearner } from "./learners";
+import { allLearners, findLearner, loggedInLearner, saveAvatar, toLearnerProfile, toLoggedInLearner } from "./learners";
 import { learnerSessionRoutes } from "./sessions";
 
 /** The Learner login screen and the logged-in Learner's own routes. */
@@ -16,19 +16,34 @@ export function learnerRoutes(deps: AppDeps) {
     .get("/me", (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      const me: LoggedInLearner = { id: learner.id, name: learner.name };
-      return c.json(me);
+      return c.json(toLoggedInLearner(learner));
+    })
+    // The Learner's own pick of Avatar and colour, first asked for at their first login.
+    .put("/me/avatar", async (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const { avatar, color } = (await readJsonObject(c)) ?? {};
+      if (!isAvatarId(avatar)) return c.json({ error: "unknownAvatar" }, 400);
+      if (!isAccentColor(color)) return c.json({ error: "unknownColor" }, 400);
+      return c.json(toLoggedInLearner(saveAvatar(db, learner, { avatar, color })));
     })
     .get("/goals", (c) => {
       const learner = loggedInLearner(db, c);
       if (!learner) return c.json({ error: "notLoggedIn" }, 401);
-      return c.json(currentGoals(deps, learner));
+      return c.json(learnerToday(deps, learner));
+    })
+    .get("/subjects/:subjectKey/path", (c) => {
+      const learner = loggedInLearner(db, c);
+      if (!learner) return c.json({ error: "notLoggedIn" }, 401);
+      const path = learningPathOf(deps, learner, c.req.param("subjectKey"));
+      if (!path) return c.json({ error: "noPath" }, 404);
+      return c.json(path);
     })
     .route("/", learnerSessionRoutes(deps));
 
   return new Hono()
     .get("/profiles", (c) =>
-      c.json(allLearners(db).map((learner): LearnerProfile => ({ id: learner.id, name: learner.name, hasPin: hasPin(learner) }))),
+      c.json(allLearners(db).map(toLearnerProfile)),
     )
     .post("/login", async (c) => {
       const { learnerId, pin } = (await readJsonObject(c)) ?? {};

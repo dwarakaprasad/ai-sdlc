@@ -24,6 +24,7 @@ import { parseId, readJsonObject } from "./http";
 import { loggedInLearner, type LearnerRow } from "./learners";
 import { appLlm } from "./llm";
 import { limitSettings, teachingSettings } from "./settings";
+import { recordCapRefusal } from "./streak";
 import { dailyLimitReached, localDate } from "./usage";
 
 type SessionRow = typeof sessions.$inferSelect;
@@ -38,6 +39,13 @@ export function learnerSessionRoutes(deps: AppDeps) {
   const tutorLesson = (learner: LearnerRow, goal: GoalRow): TutorLesson | undefined => {
     const content = contentOfGoal(curriculaDir, learner, goal);
     return content && toTutorLesson(content);
+  };
+  /** Whether the daily token cap refuses the Learner now. A refusal is recorded, as the day still counts towards their Streak. */
+  const capRefuses = (learner: LearnerRow): boolean => {
+    const at = now();
+    if (!dailyLimitReached(db, at)) return false;
+    recordCapRefusal(db, learner.id, at);
+    return true;
   };
 
   return new Hono()
@@ -56,13 +64,13 @@ export function learnerSessionRoutes(deps: AppDeps) {
         .from(sessions)
         .where(and(eq(sessions.goalId, goal.id), isNull(sessions.endedAt)))
         .get();
-      if (open) return c.json(toTutorSession(db, open, lesson));
+      if (open) return c.json(toTutorSession(db, goal, open, lesson));
       const session = db
         .insert(sessions)
         .values({ goalId: goal.id, ...startState(goal.kind), startedAt: now() })
         .returning()
         .get();
-      return c.json(toTutorSession(db, session, lesson), 201);
+      return c.json(toTutorSession(db, goal, session, lesson), 201);
     })
     .post("/sessions/:id/turn", async (c) => {
       const learner = loggedInLearner(db, c);
@@ -82,7 +90,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (check === "noTurnNow") return c.json({ error: "noTurnNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
-      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       const turn = tutorTurn(
         {
@@ -146,7 +154,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (session.step !== "ready-for-quiz") return c.json({ error: "noQuizNow" }, 409);
       const lesson = tutorLesson(learner, goal);
       if (!lesson) return c.json({ error: "lessonUnavailable" }, 409);
-      if (dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       // Every attempt gets new questions: none may repeat one the Session has already asked.
       const earlier = db
@@ -179,7 +187,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
         return true;
       });
       if (!started) return c.json({ error: "sessionChanged" }, 409);
-      return c.json(toTutorSession(db, { ...session, step: "quiz" }, lesson), 201);
+      return c.json(toTutorSession(db, goal, { ...session, step: "quiz" }, lesson), 201);
     })
     .post("/sessions/:id/answer", async (c) => {
       const learner = loggedInLearner(db, c);
@@ -204,7 +212,7 @@ export function learnerSessionRoutes(deps: AppDeps) {
       if (!content) return c.json({ error: "lessonUnavailable" }, 409);
       const lesson = toTutorLesson(content);
       // Only a written answer is graded by the LLM; the app checks the others itself, so they go on past the cap.
-      if (question.type === "short-answer" && dailyLimitReached(db, now())) return c.json({ error: "dailyLimitReached" }, 429);
+      if (question.type === "short-answer" && capRefuses(learner)) return c.json({ error: "dailyLimitReached" }, 429);
 
       const grade = await llmCall(() => gradeAnswer(appLlm(deps), lesson, learner.grade, question, given));
       if (!grade) return c.json({ error: "llmFailed" }, 502);
@@ -232,7 +240,7 @@ function saveAnswer(
     at,
   }: { session: SessionRow; goal: GoalRow; content: GoalContent; attempt: AttemptRow; question: QuestionRow; answer: string; grade: Grade; at: Date },
 ): AnswerResult | undefined {
-  const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey };
+  const feedback = { correct: grade.correct, explanation: grade.explanation, correctAnswer: question.answerKey, objective: question.objective };
   return db.transaction((tx) => {
     const { changes } = tx
       .update(quizQuestions)
@@ -258,13 +266,15 @@ function saveAnswer(
 }
 
 /** The Session as the Learner sees it, with its latest Quiz attempt. */
-function toTutorSession(db: Db, session: SessionRow, lesson: TutorLesson): TutorSession {
+function toTutorSession(db: Db, goal: GoalRow, session: SessionRow, lesson: TutorLesson): TutorSession {
   const attempt = latestAttempt(db, session.id);
   return {
     id: session.id,
     kind: lesson.kind,
+    subjectKey: goal.subjectKey,
     subjectName: lesson.subjectName,
     title: lesson.title,
+    learningObjectives: lesson.learningObjectives,
     step: session.step,
     messages: transcriptOf(db, session.id),
     ...(attempt && { quiz: toQuizAttempt(attempt, questionsOf(db, attempt.id), teachingSettings(db).maxQuizAttempts) }),
@@ -309,7 +319,13 @@ function toQuizAttempt(attempt: AttemptRow, questions: QuestionRow[], maxAttempt
       prompt: q.prompt,
       choices: q.choices,
       ...(q.answer !== null && {
-        answered: { answer: q.answer, correct: q.correct === true, explanation: q.feedback ?? q.explanation, correctAnswer: q.answerKey },
+        answered: {
+          answer: q.answer,
+          correct: q.correct === true,
+          explanation: q.feedback ?? q.explanation,
+          correctAnswer: q.answerKey,
+          objective: q.objective,
+        },
       }),
     })),
     ...(attempt.correct !== null && { score: { correct: attempt.correct, total: questions.length, passed: attempt.passed === true } }),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { household } from "./support/household";
 import { GUARDRAILS } from "../src/tutor";
+import { goalCards } from "./support/today";
 
 /** The Learning Objectives of "Understanding ratios", as the Curriculum fixture writes them. */
 const WRITE_A_RATIO = "Write a ratio to describe two quantities.";
@@ -103,18 +104,23 @@ describe("The Lesson Quiz", () => {
     for (const [i, q] of started.quiz.questions.entries()) results.push(await (await answer(q.id, questions[i]!.answer)).json());
 
     expect(results[0]).toEqual({
-      feedback: { correct: true, explanation: "The answer is 1.", correctAnswer: "1" },
+      feedback: { correct: true, explanation: "The answer is 1.", correctAnswer: "1", objective: WRITE_A_RATIO },
       step: "quiz",
     });
     expect(results.at(-1)).toEqual({
-      feedback: { correct: true, explanation: '"For every" says how one amount compares with another.', correctAnswer: "for every" },
+      feedback: {
+        correct: true,
+        explanation: '"For every" says how one amount compares with another.',
+        correctAnswer: "for every",
+        objective: RATIO_LANGUAGE,
+      },
       step: "goal-met",
       score: { correct: 10, total: 10, passed: true },
     });
     expect(llm.requests.length).toBe(llmCallsBeforeAnswers);
     // The next Lesson becomes the current Goal (see progression.test.ts).
     expect(await parentGoals()).toMatchObject([{ status: "met" }, { title: "Equivalent ratios", status: "active" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toMatchObject([{ title: "Equivalent ratios" }]);
+    expect(await goalCards(learner)).toMatchObject([{ title: "Equivalent ratios" }]);
     expect((await openSession()).status).toBe(409);
   });
 
@@ -125,7 +131,7 @@ describe("The Lesson Quiz", () => {
     const failed = await answerAll(await (await startQuiz(first)).json(), first, (q) => (q.type === "number" ? "99" : q.answer));
 
     expect(failed).toMatchObject({ step: "re-teaching", score: { correct: 5, total: 10, passed: false } });
-    expect(failed.feedback).toEqual({ correct: true, explanation: expect.any(String), correctAnswer: "for every" });
+    expect(failed.feedback).toEqual({ correct: true, explanation: expect.any(String), correctAnswer: "for every", objective: RATIO_LANGUAGE });
     expect(await parentGoals()).toMatchObject([{ status: "active" }]);
     // Coming back shows the finished attempt's score, and that re-teaching is next.
     expect(await (await openSession()).json()).toMatchObject({ step: "re-teaching", quiz: { number: 1, score: { correct: 5, total: 10, passed: false } } });
@@ -180,7 +186,7 @@ describe("The Lesson Quiz", () => {
     expect(results.map((r) => r.step)).toEqual(["re-teaching", "re-teaching", "ended"]);
     expect(results[2].score).toEqual({ correct: 0, total: 10, passed: false });
     expect(await parentGoals()).toMatchObject([{ status: "flagged" }]);
-    expect(await (await learner("/api/learner/goals")).json()).toEqual([]);
+    expect(await goalCards(learner)).toEqual([]);
     expect((await openSession()).status).toBe(409);
     expect((await learner(`/api/learner/sessions/${sessionId}/quiz`, {})).status).toBe(409);
   });
@@ -215,6 +221,19 @@ describe("The Lesson Quiz", () => {
   });
 });
 
+describe("A finished attempt", () => {
+  it("names each answered question's Learning Objective, so a failed attempt can show the Learner what they missed", async () => {
+    const { startQuiz, answerAll, openSession } = await readyForQuiz();
+    const questions = tenQuestions();
+    await answerAll(await (await startQuiz(questions)).json(), questions, (q) => (q.type === "number" ? "99" : q.answer));
+
+    const { quiz } = await (await openSession()).json();
+    const missed = quiz.questions.filter((q: { answered: { correct: boolean } }) => !q.answered.correct);
+    expect(new Set(missed.map((q: { answered: { objective: string } }) => q.answered.objective))).toEqual(new Set([WRITE_A_RATIO]));
+    expect(quiz.questions[9].answered).toMatchObject({ correct: true, objective: RATIO_LANGUAGE });
+  });
+});
+
 describe("Resuming a Quiz", () => {
   it("continues the same attempt at the next unanswered question after leaving and logging back in", async () => {
     const { client, ada, startQuiz, answer, parentGoals } = await readyForQuiz();
@@ -225,12 +244,18 @@ describe("Resuming a Quiz", () => {
     // Leaving: a fresh browser logs in as the same Learner and taps the card again.
     const again = client();
     await again("/api/learner/login", { learnerId: ada });
-    const [card] = await (await again("/api/learner/goals")).json();
-    const resumed = await (await again(`/api/learner/goals/${card.id}/session`, {})).json();
+    const [card] = await goalCards(again);
+    const resumed = await (await again(`/api/learner/goals/${card!.id}/session`, {})).json();
 
     expect(resumed).toMatchObject({ id: started.id, step: "quiz", quiz: { number: 1 } });
     expect(resumed.quiz.questions.map((q: { id: number }) => q.id)).toEqual(started.quiz.questions.map((q: { id: number }) => q.id));
-    expect(resumed.quiz.questions[0].answered).toEqual({ answer: "99", correct: false, explanation: "The answer is 1.", correctAnswer: "1" });
+    expect(resumed.quiz.questions[0].answered).toEqual({
+      answer: "99",
+      correct: false,
+      explanation: "The answer is 1.",
+      correctAnswer: "1",
+      objective: WRITE_A_RATIO,
+    });
     expect(resumed.quiz.questions[3].answered).toMatchObject({ answer: "4", correct: true });
     expect(resumed.quiz.questions[4].answered).toBeUndefined();
 
@@ -264,7 +289,7 @@ describe("Grading answers", () => {
     const res = await (await answer(started.quiz.questions[0].id, "it compares two numbers")).json();
 
     expect(res).toEqual({
-      feedback: { correct: true, explanation: "Yes, a ratio compares two amounts.", correctAnswer: written.answer },
+      feedback: { correct: true, explanation: "Yes, a ratio compares two amounts.", correctAnswer: written.answer, objective: WRITE_A_RATIO },
       step: "quiz",
     });
     const grading = llm.requests.at(-1)!;

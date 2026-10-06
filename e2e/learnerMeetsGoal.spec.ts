@@ -1,0 +1,93 @@
+import { daysFromNow, expect, test } from "./fixtures";
+
+const EXPLANATION =
+  "A ratio compares two quantities. If there are 2 cats for every 3 dogs, the ratio of cats to dogs is 2 to 3. What is the ratio of 4 cats to 5 dogs?";
+
+/** The Learning Objectives of "Understanding ratios" in the fixture Curriculum; a generated quiz must test each one. */
+const OBJECTIVES = ["Write a ratio to describe two quantities.", 'Use ratio language such as "for every".'];
+
+/** Ten number questions on "Understanding ratios" (the shortest quiz the app accepts), as the Tutor's quiz generation returns them. */
+const QUIZ = Array.from({ length: 10 }, (_, i) => ({
+  type: "number",
+  prompt: `There are ${i + 1} cats for every dog. How many cats are there for 1 dog?`,
+  choices: [],
+  answer: String(i + 1),
+  explanation: `For every dog there are ${i + 1} cats.`,
+  objective: OBJECTIVES[i % OBJECTIVES.length],
+}));
+
+test("a Parent sets up a Learner and Goal; the Learner chats with the Tutor, passes the Lesson Quiz and meets the Goal", async ({ page, llm }) => {
+  await page.goto("/");
+
+  // The Parent sets the password on a fresh install.
+  await expect(page.getByRole("heading", { name: "Welcome to Home Tutor" })).toBeVisible();
+  await page.getByLabel("Parent password").fill("correct horse");
+  await page.getByLabel("Confirm password").fill("correct horse");
+  await page.getByRole("button", { name: "Set password" }).click();
+
+  // …adds a Learner…
+  await expect(page.getByRole("heading", { name: "Add a Learner" })).toBeVisible();
+  await page.getByRole("textbox", { name: "Name" }).fill("Ada");
+  await page.getByRole("textbox", { name: "Grade" }).fill("6");
+  await page.getByRole("button", { name: "Add Learner" }).click();
+  const ada = page.getByRole("main");
+  await expect(ada.getByRole("heading", { name: "Ada" })).toBeVisible();
+
+  // …and a Goal: the first Lesson of the fixture Curriculum.
+  await ada.getByRole("combobox", { name: "Lesson" }).selectOption({ label: "Ratios · Understanding ratios" });
+  await ada.getByLabel("Target Date", { exact: true }).fill(daysFromNow(30));
+  await ada.getByRole("button", { name: "Set Goal" }).click();
+  await expect(ada.getByRole("row").filter({ hasText: "Understanding ratios" })).toContainText("Active");
+  await page.getByRole("button", { name: "Log out" }).click();
+
+  // The Learner picks their profile and starts the Goal.
+  await expect(page.getByRole("heading", { name: "Who's learning today?" })).toBeVisible();
+  await page.getByRole("button", { name: "Ada" }).click();
+  // A first login: Ada makes the profile hers first.
+  await page.getByRole("radio", { name: "Owl" }).check();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
+  const goal = page.getByRole("article").filter({ hasText: "Understanding ratios" });
+  await llm.replyWith(EXPLANATION, { pieceDelayMs: 100 });
+  await goal.getByRole("button", { name: "Continue with Jarvis" }).click();
+
+  // The Explanation streams in: its start shows before its end has arrived.
+  await expect(page.getByRole("heading", { name: "Understanding ratios" })).toBeVisible();
+  const transcript = page.getByRole("list", { name: "Conversation" });
+  await expect(transcript).toContainText("A ratio compares");
+  await expect(transcript).not.toContainText("4 cats to 5 dogs?");
+  await expect(transcript).toContainText(EXPLANATION);
+
+  // The Learner answers the Understanding Check and the Tutor moves on to the Quiz.
+  await llm.decideWith({ verdict: "advance" });
+  await llm.replyWith("Well done! 4 to 5 is right. A short quiz comes next.");
+  await page.getByLabel("Your answer").fill("4 to 5");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(transcript).toContainText("Well done! 4 to 5 is right.");
+
+  // The Lesson Quiz, every answer right.
+  await llm.decideWith({ questions: QUIZ });
+  await page.getByRole("button", { name: "Start the Quiz" }).click();
+  for (const [i, question] of QUIZ.entries()) {
+    await expect(page.getByText(`Question ${i + 1} of ${QUIZ.length}`)).toBeVisible();
+    await page.getByLabel("Your answer").fill(question.answer);
+    await page.getByRole("button", { name: "Check", exact: true }).click();
+    await expect(page.getByText("Correct.")).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
+
+  // Goal met, with the Subject's next Lesson up next.
+  await expect(page.getByText("Goal met · Math")).toBeVisible();
+  await expect(page.getByText(`${QUIZ.length} of ${QUIZ.length} on the Lesson Quiz.`)).toBeVisible();
+  // The first Goal met, a Streak begun today, and the first of Math Term 1's three Lessons and two Unit Tests.
+  await expect(page.getByRole("term")).toHaveText(["Goals met", "Streak", "Math Term 1"]);
+  await expect(page.getByRole("definition")).toHaveText(["1", "1 day", "1/5"]);
+  const upNext = page.getByRole("article").filter({ hasText: "Up next" });
+  await expect(upNext).toContainText("Equivalent ratios");
+  await expect(upNext.getByRole("button", { name: "Start" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to Today" }).click();
+  // The met Goal has gone and its Subject has moved on to the next Lesson.
+  await expect(page.getByRole("heading", { name: "Hi Ada!" })).toBeVisible();
+  await expect(page.getByRole("article").filter({ hasText: "Understanding ratios" })).toHaveCount(0);
+  await expect(page.getByRole("article").filter({ hasText: "Equivalent ratios" })).toBeVisible();
+});

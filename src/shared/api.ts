@@ -12,17 +12,54 @@ export type CurriculumSummary =
     })
   | { id: string; valid: false; errors: CurriculumError[] };
 
-/** A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. */
-export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean };
+/** The pictures a Learner can pick as their Avatar (see CONTEXT.md); the app ships a drawing for each. */
+export const AVATARS = [
+  "fox",
+  "owl",
+  "cat",
+  "panda",
+  "frog",
+  "whale",
+  "penguin",
+  "turtle",
+  "rocket",
+  "planet",
+  "bolt",
+  "mountain",
+  "cactus",
+  "guitar",
+  "controller",
+  "leaf",
+] as const;
+export type AvatarId = (typeof AVATARS)[number];
 
-/** Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it. */
-export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null };
+/** The accent colours a Learner's Avatar sits on, in palette order: each new Learner gets the one after the last Learner's. */
+export const ACCENT_COLORS = ["coral", "amber", "sun", "mint", "sky", "indigo", "violet", "pink"] as const;
+export type AccentColor = (typeof ACCENT_COLORS)[number];
+
+/** A Learner's Avatar and its colour; no picture until the Learner's first pick. */
+export type AvatarChoice = { avatar: AvatarId | null; color: AccentColor };
+
+/**
+ * A Learner as the Parent sees it (GET /api/parent/learners). The PIN itself is never returned. `needsAttention` counts the
+ * Learner's Goals that need the Parent (see needsAttention), and `streak` is the length of their Streak; both worked out on each request.
+ */
+export type Learner = { id: number; name: string; grade: string; curriculumId: string; hasPin: boolean; needsAttention: number; streak: number } & AvatarChoice;
+
+/**
+ * Body of POST /api/parent/learners and PUT /api/parent/learners/:id. On edit, an absent `pin` keeps it and `null` removes it;
+ * an absent `avatar` or `color` keeps it (a new Learner gets no Avatar and the next colour), and a `null` Avatar clears it.
+ */
+export type LearnerInput = { name: string; grade: string; curriculumId: string; pin?: string | null } & Partial<AvatarChoice>;
 
 /** One profile on the Learner login screen (GET /api/learner/profiles). */
-export type LearnerProfile = { id: number; name: string; hasPin: boolean };
+export type LearnerProfile = { id: number; name: string; hasPin: boolean } & AvatarChoice;
 
-/** The logged-in Learner (GET /api/learner/me). */
-export type LoggedInLearner = { id: number; name: string };
+/** The logged-in Learner (GET /api/learner/me, and PUT /api/learner/me/avatar, whose body is `{ avatar, color }`, both required). */
+export type LoggedInLearner = { id: number; name: string } & AvatarChoice;
+
+export const isAvatarId = (value: unknown): value is AvatarId => AVATARS.includes(value as AvatarId);
+export const isAccentColor = (value: unknown): value is AccentColor => ACCENT_COLORS.includes(value as AccentColor);
 
 /** GET and PUT /api/parent/settings/llm: which provider and model the Tutor uses. The API key is never part of it. */
 export type LlmSettings = { provider: ProviderId; model: string };
@@ -53,12 +90,17 @@ export type Goal = {
   targetDate: string;
   status: GoalStatus;
   overdue: boolean;
+  /** How many days past its Target Date an overdue Goal is; 0 when it isn't overdue. */
+  daysOverdue: number;
   /**
    * Its Lesson (or Unit) is gone from the Learner's Curriculum, say after a renumbering, so its title falls back to its key.
-   * The Parent re-points or removes it; until then its Subject shows the Learner no card. Never set while the Curriculum is invalid.
+   * The Parent re-points or removes it; until then the Learner sees its Subject is with the Parent, with nothing to start. Never set while the Curriculum is invalid.
    */
   orphaned: boolean;
 };
+
+/** Whether a Goal needs the Parent's attention: it is overdue, or a Flagged Goal (or both, counted once). */
+export const needsAttention = (goal: Pick<Goal, "overdue" | "status">): boolean => goal.overdue || goal.status === "flagged";
 
 /** One Session in the progress view: when it ran, where it got to, and the score of each finished Quiz attempt. Times are ISO 8601. */
 export type SessionSummary = {
@@ -70,8 +112,11 @@ export type SessionSummary = {
   attempts: ({ number: number } & QuizScore)[];
 };
 
-/** One Goal in the progress view (GET /api/parent/learners/:id/progress): the Goal, with its Sessions oldest first. */
+/** One Goal in the progress view: the Goal, with its Sessions oldest first. */
 export type GoalProgress = Goal & { sessions: SessionSummary[] };
+
+/** A Learner's progress for the Parent (GET /api/parent/learners/:id/progress): the length of their Streak, and each Goal's progress. */
+export type LearnerProgress = { streak: number; goals: GoalProgress[] };
 
 /** A Quiz question as the Parent reads it in a transcript: with its answer key, and the Learner's answer once given. */
 export type TranscriptQuestion = {
@@ -121,8 +166,51 @@ export type SpreadInput = { termKey: string; termEndDate: string };
 /** Body of PUT /api/parent/learners/:id/goals/order: one Subject's whole queue, every Goal once, in its new order. */
 export type GoalOrder = { goalIds: number[] };
 
-/** One Goal card on the Learner home screen (GET /api/learner/goals): a Subject's current Goal. A Unit Test's title is its Unit's. */
+/** A Subject's current Goal as a card on the Learner's home screen. A Unit Test's title is its Unit's. */
 export type GoalCard = Pick<Goal, "id" | "kind" | "subjectName" | "title" | "targetDate" | "overdue">;
+
+/** How far through its current Term a Subject is: the Term's met Goals, out of its Lessons and Unit Tests. */
+export type TermProgress = { termName: string; met: number; total: number };
+
+/**
+ * One Subject on the Learner's home screen. `card` is its current Goal (the first in its queue still to be met), or null
+ * when there's none, or when that Goal is Flagged or Orphaned and so `withParent`. The current Term is the current Goal's,
+ * or once nothing is left to meet, the last met Goal's; `term` is null when there's no such Term (or the Curriculum is invalid).
+ */
+export type SubjectToday = { subjectKey: string; subjectName: string; card: GoalCard | null; withParent: boolean; term: TermProgress | null };
+
+/**
+ * Where a Lesson or Unit Test stands on the Learning Path, from its Goal: the Subject's current Goal, met, with the Parent
+ * (Flagged), skipped, or ahead (anything else, including no Goal yet). An Orphaned Goal's Lesson is gone from the Curriculum,
+ * so it has no node, and while the current Goal is Orphaned nothing on the Path is current.
+ */
+export const PATH_STATES = ["met", "current", "skipped", "with-parent", "ahead"] as const;
+export type PathState = (typeof PATH_STATES)[number];
+
+/** A Lesson, or a Unit's Unit Test (keyed and titled by its Unit), on the Learning Path; the current one with its Goal, to start. */
+export type PathNode = { key: string; kind: GoalKind; title: string; state: PathState; goalId?: number };
+
+/**
+ * A Subject's Learning Path (GET /api/learner/subjects/:subjectKey/path): its current Term's Units in Curriculum order,
+ * each with its Lessons and then its Unit Test. Worked out on each request; the Goal queue, not the Path, decides what's next.
+ */
+export type LearningPath = { subjectName: string; termName: string; units: { key: string; title: string; nodes: PathNode[] }[] };
+
+/**
+ * The Learner's home data (GET /api/learner/goals): one entry per Subject with any Goal, the Subjects with a card first,
+ * earliest Target Date first (so an overdue Goal leads), and the Subjects with the Parent last; how many Goals the
+ * Learner has met in all; and their Streak.
+ */
+export type LearnerToday = { subjects: SubjectToday[]; goalsMet: number; streak: Streak };
+
+/**
+ * How a day shows in the Streak's week: `worked` counted, `rest` is a Saturday or Sunday that didn't count (it never breaks
+ * the Streak), `missed` is a weekday that didn't count, and `today` is today while it hasn't counted yet.
+ */
+export type StreakDayState = "worked" | "rest" | "missed" | "today";
+
+/** The Streak: its length in days, and the last seven days (YYYY-MM-DD, local), oldest first and ending today. */
+export type Streak = { days: number; week: { date: string; state: StreakDayState }[] };
 
 /**
  * Where a Session is in the teaching steps: hearing the Explanation, talking through the Understanding Check,
@@ -146,8 +234,11 @@ export type SessionMessage = { role: MessageRole; content: string };
 export const QUESTION_TYPES = ["multiple-choice", "number", "short-answer"] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
 
-/** Right or wrong, with a one-line explanation and the answer key, shown straight after an answer. */
-export type AnswerFeedback = { correct: boolean; explanation: string; correctAnswer: string };
+/**
+ * Right or wrong, with a one-line explanation and the answer key, shown straight after an answer; and the Learning Objective
+ * the question tested, so a failed attempt's score can name what was missed.
+ */
+export type AnswerFeedback = { correct: boolean; explanation: string; correctAnswer: string; objective: string };
 
 /** A Quiz question as the Learner sees it. The answer key is only part of the feedback, once it's answered. */
 export type QuizQuestion = {
@@ -173,8 +264,11 @@ export type QuizAttempt = { number: number; maxAttempts: number; questions: Quiz
 export type TutorSession = {
   id: number;
   kind: GoalKind;
+  subjectKey: string;
   subjectName: string;
   title: string;
+  /** What the Lesson (or every Lesson of a Unit Test's Unit) teaches, for the Learner to see beside the conversation. */
+  learningObjectives: string[];
   step: SessionStep;
   messages: SessionMessage[];
   quiz?: QuizAttempt;

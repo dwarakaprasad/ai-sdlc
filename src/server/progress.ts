@@ -1,11 +1,12 @@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
-import type { GoalProgress, QuizScore, SessionSummary, SessionTranscript } from "../shared/api";
+import type { LearnerProgress, QuizScore, SessionSummary, SessionTranscript } from "../shared/api";
 import type { AppDeps } from "./deps";
 import type { DbReader } from "./db";
 import { goals, messages, quizAttempts, quizQuestions, sessions } from "./db/schema";
 import { goalsOf } from "./goals";
 import { parseId } from "./http";
+import { streakOf } from "./streak";
 import { learnerFromPath } from "./learners";
 
 type SessionRow = typeof sessions.$inferSelect;
@@ -24,7 +25,10 @@ export function parentProgressRoutes(deps: AppDeps) {
         db,
         learnerGoals.map((g) => g.id),
       );
-      const progress: GoalProgress[] = learnerGoals.map((goal) => ({ ...goal, sessions: summaries.get(goal.id) ?? [] }));
+      const progress: LearnerProgress = {
+        streak: streakOf(db, learner.id, deps.now()).days,
+        goals: learnerGoals.map((goal) => ({ ...goal, sessions: summaries.get(goal.id) ?? [] })),
+      };
       return c.json(progress);
     })
     .get("/sessions/:sessionId", (c) => {

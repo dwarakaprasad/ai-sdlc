@@ -1,0 +1,697 @@
+/* The Session screens that follow prototype B: the chat with its lesson panel, the Quiz and its score, and Goal met. Tokens only. */
+
+/* Chat: a lesson panel beside the conversation */
+.chat-app {
+  /* The conversation keeps to a readable column on a wide screen. */
+  --convo-gutter: max(var(--s-7), calc(50% - 340px));
+}
+.chat-app {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+.lesson-panel {
+  border-right: 1px solid var(--line);
+  padding: var(--s-6) var(--s-6) var(--s-7);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  overflow-y: auto;
+}
+.lesson-leave {
+  margin-bottom: var(--s-2);
+}
+.lesson-steps {
+  list-style: none;
+  padding: 0;
+  margin: var(--s-4) 0;
+  display: grid;
+  gap: var(--s-3);
+}
+.lesson-steps li {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+.lesson-step-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: var(--t-eyebrow);
+  flex: none;
+}
+.lesson-steps .done .lesson-step-mark {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.lesson-steps .now {
+  color: var(--ink);
+}
+.lesson-steps .now .lesson-step-mark {
+  background: var(--yellow);
+  border-color: var(--ink);
+}
+.lesson-objectives {
+  align-self: stretch;
+  padding: var(--s-4);
+}
+.lesson-objectives ul {
+  margin: var(--s-2) 0 0;
+  padding-left: var(--s-5);
+  font-size: var(--t-h3);
+  display: grid;
+  gap: var(--s-2);
+}
+
+.convo {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 0;
+  background: var(--card);
+}
+.convo-scroll {
+  overflow-y: auto;
+  padding: var(--s-7) var(--convo-gutter) var(--s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+.transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+}
+.tutor-header {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  font-weight: 800;
+  color: var(--ink);
+  font-size: var(--t-h3);
+  margin-bottom: var(--s-1);
+}
+.tutor-header .muted {
+  font-weight: 700;
+  font-size: var(--t-small);
+}
+.tutor-text {
+  font-size: var(--t-lead);
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.tutor-text .katex-display {
+  white-space: normal;
+}
+.tutor-text.writing::after {
+  content: "▍";
+  margin-left: 2px;
+  opacity: 0.5;
+  animation: caret-blink 1s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.learner-note {
+  align-self: flex-end;
+  max-width: 70%;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-field);
+  padding: var(--s-2) var(--s-4);
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.tutor-note,
+.break-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--yellow);
+  border-radius: var(--r-field);
+  padding: var(--s-3) var(--s-4);
+  background: var(--paper);
+}
+.tutor-note p {
+  margin: 0;
+  flex: 1;
+  min-width: 14em;
+  color: var(--ink);
+}
+.break-text {
+  flex: 1;
+  min-width: 14em;
+  display: flex;
+  flex-direction: column;
+}
+.break-text strong {
+  color: var(--ink);
+}
+.convo-failed {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+.composer {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-end;
+  padding: var(--s-4) var(--convo-gutter) var(--s-6);
+  border-top: 1px solid var(--line);
+}
+.composer textarea {
+  flex: 1;
+  min-height: 52px;
+  max-height: 10em;
+  padding: var(--s-3) var(--s-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-field);
+  background: var(--paper);
+  font-size: var(--t-lead);
+  line-height: 1.4;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+}
+.composer textarea:focus {
+  border-color: var(--ink);
+  background: var(--card);
+}
+.composer-send {
+  min-height: 52px;
+  width: 52px;
+  padding: 0;
+}
+.quiz-start {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  padding: var(--s-4) var(--convo-gutter) var(--s-6);
+  border-top: 1px solid var(--line);
+}
+.quiz-start-text {
+  flex: 1;
+  min-width: 14em;
+  display: flex;
+  flex-direction: column;
+}
+.quiz-start-text strong {
+  color: var(--ink);
+}
+
+/* Quiz: one question per card */
+.quiz-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.quiz-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-7);
+}
+.quiz-top-title {
+  font-size: var(--t-small);
+}
+.quiz-segments {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.quiz-segments span {
+  width: 28px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+}
+.quiz-segments .now {
+  background: var(--ink);
+}
+.quiz-segments .right {
+  background: var(--green);
+}
+.quiz-segments .wrong {
+  background: var(--warm);
+}
+.quiz-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card-lg);
+  max-width: 720px;
+  width: calc(100% - var(--s-7));
+  margin: var(--s-3) auto var(--s-9);
+  padding: var(--s-7) var(--s-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-5);
+  box-shadow: var(--lift);
+}
+.quiz-prompt {
+  font-size: var(--t-prompt);
+  font-weight: 700;
+  line-height: 1.4;
+}
+.quiz-options {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-3);
+}
+.quiz-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  min-height: 64px;
+  padding: var(--s-3) var(--s-4);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-field);
+  background: var(--card);
+  font-size: var(--t-option);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color var(--m-base), opacity var(--m-base);
+}
+.quiz-option:hover {
+  border-color: var(--line-hover);
+}
+/* The real radio stays in the page for keyboards and screen readers; the row shows its state. */
+.quiz-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.quiz-option:has(input:focus-visible) {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.quiz-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--line-hover);
+  flex: none;
+}
+.quiz-option.picked {
+  border-color: var(--ink);
+}
+.quiz-option.picked .quiz-radio {
+  border: 6px solid var(--ink);
+}
+.quiz-option.right {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.quiz-option.right .quiz-radio {
+  border: 6px solid var(--green);
+}
+.quiz-option.wrong {
+  border-color: var(--warm);
+  background: var(--warm-soft);
+}
+.quiz-option.wrong .quiz-radio {
+  border: 6px solid var(--warm);
+}
+.quiz-option.dim {
+  opacity: 0.45;
+}
+.quiz-options:disabled .quiz-option {
+  cursor: default;
+}
+.quiz-number,
+.quiz-written {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.quiz-number input {
+  width: 200px;
+  min-height: 64px;
+  font-size: var(--t-big);
+  font-weight: 800;
+  border: 0;
+  border-bottom: 3px solid var(--ink);
+  background: none;
+  padding: var(--s-1) 0;
+  color: var(--ink);
+  outline: none;
+}
+.quiz-number input:focus-visible {
+  border-bottom-color: var(--yellow);
+}
+.quiz-hint {
+  font-size: var(--t-small);
+}
+.quiz-written textarea {
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-field);
+  padding: var(--s-3) var(--s-4);
+  font-size: var(--t-lead);
+  resize: vertical;
+  outline: none;
+  background: var(--card);
+  color: var(--ink);
+}
+.quiz-written textarea:focus {
+  border-color: var(--ink);
+}
+.quiz-feedback {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-field);
+  font-size: var(--t-feedback);
+  animation: fade-in var(--m-enter) both;
+}
+.quiz-feedback.right {
+  background: var(--green-soft);
+  color: var(--green-ink);
+}
+.quiz-feedback.wrong {
+  background: var(--warm-soft);
+  color: var(--warm-ink);
+}
+.quiz-feedback-mark {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--on-ink);
+}
+.quiz-feedback.right .quiz-feedback-mark {
+  background: var(--green);
+  animation: bounce-in var(--m-bounce) var(--ease-bounce) both;
+}
+.quiz-feedback.wrong .quiz-feedback-mark {
+  background: var(--warm);
+}
+.quiz-feedback-answer {
+  font-size: var(--t-small);
+  margin-top: var(--s-1);
+}
+.quiz-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Score */
+.quiz-score {
+  max-width: 1000px;
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--s-4) var(--s-7) var(--s-9);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-8);
+  align-items: start;
+}
+.quiz-score-number {
+  font-size: var(--t-score);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  margin: var(--s-2) 0 var(--s-5);
+}
+.quiz-score-number span {
+  color: var(--line-strong);
+}
+.quiz-score-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+.quiz-score-list li {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-field);
+  font-size: var(--t-h3);
+}
+.quiz-score-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--on-ink);
+}
+.quiz-score-list .right .quiz-score-mark {
+  background: var(--green);
+}
+.quiz-score-list .wrong .quiz-score-mark {
+  background: var(--warm);
+}
+.quiz-score-next {
+  border-radius: var(--r-card-lg);
+  padding: var(--s-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.missed-objectives {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+.missed-objectives li {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--yellow-soft);
+  border-radius: var(--r-btn);
+  padding: var(--s-3);
+}
+.missed-objectives .icon {
+  flex: none;
+}
+
+/* Goal met */
+.goal-met {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-8) var(--s-4) var(--s-9);
+  text-align: center;
+}
+.goal-met-check circle,
+.goal-met-check path {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.goal-met-track {
+  stroke: var(--line);
+}
+.goal-met-ring {
+  stroke: var(--ink);
+  stroke-dasharray: 340;
+  stroke-dashoffset: 340;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  animation: draw var(--m-draw) ease-out var(--m-fast) forwards;
+}
+.goal-met-tick {
+  stroke: var(--ink);
+  stroke-width: 9;
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  animation: draw var(--m-draw-tick) ease-out var(--m-draw) forwards;
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* Drawn already when motion is reduced. */
+@media (prefers-reduced-motion: reduce) {
+  .goal-met-ring,
+  .goal-met-tick {
+    stroke-dashoffset: 0;
+  }
+}
+.goal-met-title {
+  max-width: 16em;
+  font-size: var(--t-big);
+}
+.goal-met-score {
+  max-width: 32em;
+}
+.goal-met-stats {
+  display: flex;
+  margin: var(--s-3) 0 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.goal-met-stats > div {
+  padding: var(--s-3) var(--s-6);
+  display: flex;
+  flex-direction: column;
+}
+.goal-met-stats > div + div {
+  border-left: 1px solid var(--line);
+}
+.goal-met-stats dt {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: var(--t-small);
+}
+.goal-met-stats dd {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s-1);
+  font-size: var(--t-name);
+  font-weight: 800;
+  color: var(--ink);
+}
+.goal-met-stats .goal-met-goals {
+  color: var(--gold);
+}
+.goal-met-stats .goal-met-streak {
+  color: var(--orange);
+}
+.up-next {
+  display: flex;
+  gap: var(--s-5);
+  align-items: center;
+  text-align: left;
+  background: var(--ink);
+  color: var(--on-ink);
+  border-radius: var(--r-card);
+  padding: var(--s-4) var(--s-5) var(--s-4) var(--s-6);
+  margin-top: var(--s-3);
+  width: min(560px, 100%);
+}
+.up-next > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.up-next strong {
+  font-size: var(--t-option);
+}
+.up-next .eyebrow {
+  color: var(--yellow);
+}
+.up-next-when {
+  color: var(--on-ink-muted);
+  font-size: var(--t-small);
+}
+.btn-ink.up-next-start {
+  background: var(--yellow);
+  color: var(--ink);
+  box-shadow: 0 3px 0 var(--yellow-edge);
+}
+
+@media (max-width: 1000px) {
+  .chat-app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  /* The lesson panel collapses to its title, so the conversation gets the space. */
+  .lesson-panel {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--s-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: var(--s-2) var(--s-4);
+    overflow: visible;
+  }
+  .lesson-leave {
+    margin-bottom: 0;
+  }
+  .lesson-panel .h2 {
+    font-size: var(--t-lead);
+  }
+  .lesson-steps,
+  .lesson-objectives,
+  .lesson-panel .eyebrow {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .convo-scroll,
+  .composer,
+  .quiz-start {
+    padding-left: var(--s-4);
+    padding-right: var(--s-4);
+  }
+  .quiz-top {
+    padding: var(--s-2) var(--s-4);
+  }
+  .quiz-top-title {
+    display: none;
+  }
+  .quiz-card {
+    padding: var(--s-6) var(--s-5);
+  }
+  .quiz-score {
+    grid-template-columns: 1fr;
+    padding: var(--s-4) var(--s-4) var(--s-9);
+  }
+  .goal-met-title {
+    font-size: var(--t-h1);
+  }
+  .up-next {
+    flex-wrap: wrap;
+  }
+}
+
+/* The break prompt over a Quiz screen, which has no conversation to hold it. */
+.break-float {
+  position: fixed;
+  left: var(--s-4);
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 4;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.break-float .break-banner {
+  background: var(--card);
+  box-shadow: var(--lift);
+}

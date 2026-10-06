@@ -1,13 +1,16 @@
 import type {
+  AccentColor,
+  AvatarId,
   AnswerResult,
   ConnectionTest,
   CurriculumSummary,
   DailyUsage,
   Goal,
-  GoalCard,
+  LearnerToday,
+  LearningPath,
   GoalInput,
   GoalOrder,
-  GoalProgress,
+  LearnerProgress,
   Learner,
   LearnerInput,
   LessonOption,
@@ -62,7 +65,7 @@ export const api = {
   markGoalMet: (learnerId: number, goalId: number) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/met`, {}),
   repointGoal: (learnerId: number, goalId: number, input: RepointInput) => post(`/api/parent/learners/${learnerId}/goals/${goalId}/repoint`, input),
   removeGoal: (learnerId: number, goalId: number) => send(`/api/parent/learners/${learnerId}/goals/${goalId}`, "DELETE"),
-  progress: (learnerId: number) => get<GoalProgress[]>(`/api/parent/learners/${learnerId}/progress`),
+  progress: (learnerId: number) => get<LearnerProgress>(`/api/parent/learners/${learnerId}/progress`),
   transcript: (learnerId: number, sessionId: number) => get<SessionTranscript>(`/api/parent/learners/${learnerId}/sessions/${sessionId}`),
   limitSettings: () => get<LimitSettings>("/api/parent/settings/limits"),
   saveLimitSettings: (settings: LimitSettings) => send("/api/parent/settings/limits", "PUT", settings),
@@ -80,7 +83,16 @@ export const api = {
   },
   loginLearner: (learnerId: number, pin?: string) => post("/api/learner/login", { learnerId, pin }),
   logoutLearner: () => post("/api/learner/logout", {}),
-  goalCards: () => get<GoalCard[]>("/api/learner/goals"),
+  /** Saves the logged-in Learner's own pick of Avatar and colour, answering with the Learner as they now are. */
+  pickAvatar: (choice: { avatar: AvatarId; color: AccentColor }) => send("/api/learner/me/avatar", "PUT", choice),
+  today: () => get<LearnerToday>("/api/learner/goals"),
+  /** A Subject's Learning Path, or undefined while it has none (no Goal yet, or a Curriculum that needs fixing). */
+  learningPath: async (subjectKey: string) => {
+    const res = await fetch(`/api/learner/subjects/${encodeURIComponent(subjectKey)}/path`);
+    if (res.status === 404) return undefined;
+    if (!res.ok) throw new Error(`learning path: ${res.status}`);
+    return (await res.json()) as LearningPath;
+  },
   teachingSettings: () => get<TeachingSettings>("/api/parent/settings/teaching"),
   saveTeachingSettings: (settings: TeachingSettings) => send("/api/parent/settings/teaching", "PUT", settings),
   /**
