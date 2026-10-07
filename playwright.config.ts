@@ -19,7 +19,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "tablet", use: { ...devices["Desktop Chrome"], viewport: { width: 1024, height: 768 } } },
+    // The browser an iPad-using Learner actually has: Safari's engine, touch, and a landscape tablet viewport.
+    { name: "tablet", use: { ...devices["iPad (gen 7) landscape"] } },
     { name: "laptop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
   ],
   webServer: {
