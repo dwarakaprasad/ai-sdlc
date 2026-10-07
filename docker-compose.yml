@@ -18,3 +18,11 @@ services:
       - ./data:/app/data
       - ./curricula:/app/curricula:ro
     restart: unless-stopped
+    # "healthy" once the app serves its root page; the slim image has no curl, so Node asks.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      start_interval: 1s
+      retries: 3
