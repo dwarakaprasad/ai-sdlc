@@ -228,6 +228,7 @@ npm run dev          # API server, restarting on change
 npm run dev:client   # front-end dev server, proxying /api
 npm test             # the test suite
 npm run test:e2e     # builds the client, then whole user flows in headless Chromium and WebKit (once: npx playwright install chromium webkit)
+npm run test:docker  # a Parent sets up a household in your own `docker compose up` (start it on an empty ./data: this sets the Parent password)
 npm run typecheck
 ```
 
