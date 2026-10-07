@@ -60,10 +60,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Run the container as the runner's user, so it can write to the checked-out ./data.
+      # Run the container as the runner's user, so it can write to the checked-out ./data: the README's fix for permission errors.
+      # GitHub's runners aren't 1000, the default, so this exercises that fix.
       - run: |
           echo "HOME_TUTOR_UID=$(id -u)" >> "$GITHUB_ENV"
           echo "HOME_TUTOR_GID=$(id -g)" >> "$GITHUB_ENV"
+          if [ "$(id -u)" = 1000 ]; then echo "::warning::The runner's user id is 1000, the default, so this job no longer exercises HOME_TUTOR_UID."; fi
       - run: docker compose up -d --build --wait
       - uses: actions/setup-node@v4
         with:
@@ -72,6 +74,11 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:docker
+      - name: The database in ./data belongs to the runner's user and group
+        run: |
+          owner="$(stat -c %u:%g data/home-tutor.db)"
+          runner="$(id -u):$(id -g)"
+          test "$owner" = "$runner" || { echo "::error::data/home-tutor.db is owned by $owner, not $runner"; exit 1; }
       - if: failure()
         run: docker compose logs
       - uses: actions/upload-artifact@v4
