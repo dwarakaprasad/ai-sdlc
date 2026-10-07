@@ -99,7 +99,7 @@ Keep the terminal open while the Tutor is in use. Press `Ctrl+C` to stop it.
 docker compose up -d
 ```
 
-It keeps running in the background, and starts again whenever Docker Desktop does. To stop it, run `docker compose down`. To check that it's working, run `docker compose ps`: it shows `healthy` once the Tutor is ready to open.
+It keeps running in the background, and starts again whenever Docker Desktop does. To stop it, run `docker compose down`. To check that it's working, run `docker compose ps`: it shows `healthy` once Home Tutor is ready to open.
 
 Now open **<http://localhost:3000>** in your web browser.
 
