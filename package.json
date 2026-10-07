@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "curriculum:check": "tsx src/curriculum/check.ts",
-    "test:e2e": "vite build && playwright test"
+    "test:e2e": "vite build && playwright test",
+    "test:docker": "playwright test --config playwright.docker.config.ts"
   },
   "license": "MIT",
   "description": "Self-hosted, Curriculum-driven home tutoring app",
