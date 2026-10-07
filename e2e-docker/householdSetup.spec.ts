@@ -13,9 +13,9 @@ test("a Parent sets a password and adds a Learner on the first Curriculum listed
   await page.getByRole("button", { name: "Set password" }).click();
 
   // With no valid Curriculum, the app says so in place of the form.
-  const form = page.getByRole("heading", { name: "Add a Learner" });
+  const addLearnerHeading = page.getByRole("heading", { name: "Add a Learner" });
   const noCurriculum = page.getByText("Add a valid Curriculum before adding Learners.");
-  await expect(form.or(noCurriculum)).toBeVisible();
+  await expect(addLearnerHeading.or(noCurriculum)).toBeVisible();
   await expect(noCurriculum, "no Curriculum is listed: ./curricula needs at least one valid Curriculum").toBeHidden();
   await page.getByRole("textbox", { name: "Name" }).fill("Ada");
   await page.getByRole("textbox", { name: "Grade" }).fill("6");
